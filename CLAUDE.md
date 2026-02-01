@@ -7,6 +7,15 @@ Agent-focused terminal workspace built with Tauri (Rust) + React + xterm.js.
 ```
 src/                        # React frontend
 ├── components/
+│   ├── git/                   # Git panel components
+│   │   ├── GitPane.tsx           # Main git panel container
+│   │   ├── GitPanelTabs.tsx      # Changes/History tab switcher
+│   │   ├── FileChanges.tsx       # Staged/Unstaged/Untracked sections
+│   │   ├── FileItem.tsx          # File row with stage/unstage actions
+│   │   ├── DiffViewer.tsx        # Unified diff display
+│   │   ├── CommitForm.tsx        # Commit message + buttons
+│   │   ├── CommitHistory.tsx     # Scrollable commit list
+│   │   └── CommitItem.tsx        # Expandable commit with files
 │   ├── AddProjectModal.tsx    # Project creation (browse/clone)
 │   ├── ProjectSidebar.tsx     # Left sidebar with project list
 │   ├── SettingsModal.tsx      # Settings with tabs (Appearance, Profiles, Layouts)
@@ -16,6 +25,7 @@ src/                        # React frontend
 │   └── ThemeContext.tsx       # Theme provider with localStorage persistence
 ├── lib/
 │   ├── config.ts              # AppConfig, ProjectConfig types
+│   ├── git.ts                 # Git types (GitStatus, GitFile, CommitSummary)
 │   ├── layouts.ts             # Layout, LayoutRow, LayoutPane types
 │   ├── profiles.ts            # TerminalProfile type, defaults
 │   ├── providers.ts           # AI provider registry
@@ -39,9 +49,18 @@ Uses CSS positioning, not conditional rendering. Maximized pane gets `position: 
 xterm.js captures keyboard events. Use `onKeyDownCapture` on container div to intercept before xterm. Store callbacks in refs to avoid stale closures.
 
 ### Profile/Layout System
-- **Profiles**: Reusable terminal configs (id, name, command, color)
+- **Profiles**: Reusable terminal configs (id, name, command, color, type)
+  - `type: "terminal"` (default) - xterm.js terminal pane
+  - `type: "git"` - Git panel with status, staging, commits
 - **Layouts**: Pane arrangements with rows containing panes, each referencing a profile
 - **Projects**: Reference a layout by ID
+
+### GitPane
+Non-terminal pane type for git operations. Features:
+- **Changes tab**: View staged/unstaged/untracked files, stage/unstage, view diffs
+- **History tab**: Browse commit history, expand to see changed files, view diffs
+- **Commit form**: Write commit message, commit, or commit & push
+- Status auto-polls every 5 seconds
 
 ## Config
 

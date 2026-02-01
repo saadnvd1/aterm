@@ -116,6 +116,20 @@ export const DEFAULT_LAYOUTS: Layout[] = [
       },
     ],
   },
+  {
+    id: "ai-git",
+    name: "AI + Git",
+    rows: [
+      {
+        id: "row-1",
+        flex: 1,
+        panes: [
+          { id: "pane-1", profileId: "claude", flex: 2 },
+          { id: "pane-2", profileId: "git", flex: 1 },
+        ],
+      },
+    ],
+  },
 ];
 
 export function createLayout(name: string): Layout {

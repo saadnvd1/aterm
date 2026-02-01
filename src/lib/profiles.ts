@@ -1,11 +1,14 @@
 // Terminal profiles - reusable terminal configurations (like iTerm2 profiles)
 
+export type ProfileType = "terminal" | "git";
+
 export interface TerminalProfile {
   id: string;
   name: string;
   command?: string; // If empty, spawns default shell
   color: string; // Accent color for pane header
   icon?: string;
+  type?: ProfileType; // Defaults to "terminal"
 }
 
 // Default profiles that come with aTerm
@@ -45,6 +48,12 @@ export const DEFAULT_PROFILES: TerminalProfile[] = [
     name: "Tests",
     command: "npm test -- --watch",
     color: "#ffe66d",
+  },
+  {
+    id: "git",
+    name: "Git",
+    color: "#f97316",
+    type: "git",
   },
 ];
 

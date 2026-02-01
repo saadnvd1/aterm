@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { TerminalPane } from "./TerminalPane";
+import { GitPane } from "./git/GitPane";
 import type { ProjectConfig } from "../lib/config";
 import type { Layout, LayoutRow, LayoutPane } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
@@ -623,19 +624,31 @@ function SortablePane({
         }}
         onContextMenu={onContextMenu}
       >
-        <TerminalPane
-          id={`${project.id}-${paneId}`}
-          title={profile.name}
-          cwd={project.path}
-          command={profile.command}
-          accentColor={profile.color}
-          onFocus={onFocus}
-          isMaximized={isMaximized}
-          onToggleMaximize={onToggleMaximize}
-          onClose={onClosePane}
-          canClose={canClose}
-          dragHandleProps={{ ...attributes, ...listeners }}
-        />
+        {profile.type === "git" ? (
+          <GitPane
+            id={`${project.id}-${paneId}`}
+            cwd={project.path}
+            accentColor={profile.color}
+            onFocus={onFocus}
+            onClose={onClosePane}
+            canClose={canClose}
+            dragHandleProps={{ ...attributes, ...listeners }}
+          />
+        ) : (
+          <TerminalPane
+            id={`${project.id}-${paneId}`}
+            title={profile.name}
+            cwd={project.path}
+            command={profile.command}
+            accentColor={profile.color}
+            onFocus={onFocus}
+            isMaximized={isMaximized}
+            onToggleMaximize={onToggleMaximize}
+            onClose={onClosePane}
+            canClose={canClose}
+            dragHandleProps={{ ...attributes, ...listeners }}
+          />
+        )}
         {isMaximized && (
           <button
             style={styles.restoreButton}
