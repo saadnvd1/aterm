@@ -1,14 +1,32 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+target/
+
+# Environment
 .env
 .env.local
-__pycache__/
-*.pyc
-.venv/
-venv/
-.DS_Store
-*.log
+.env.*.local
+
+# IDE
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test/coverage
 coverage/
 .cache/
+
+# Tauri
+src-tauri/target/

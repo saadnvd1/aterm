@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aTerm</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+      :root {
+        --bg: #0a0a0f;
+        --bg-secondary: #12121a;
+        --bg-tertiary: #1a1a24;
+        --border: #2a2a3a;
+        --border-subtle: #1f1f2a;
+        --text: #e4e4e8;
+        --text-muted: #8888a0;
+        --text-subtle: #55556a;
+        --accent: #7c5cff;
+        --accent-hover: #9070ff;
+        --accent-muted: #4a3a80;
+        --success: #50fa7b;
+        --warning: #f1fa8c;
+        --error: #ff5555;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace;
+        font-size: 13px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-subtle);
+      }
+
+      /* Focus styles */
+      :focus {
+        outline: none;
+      }
+
+      :focus-visible {
+        outline: 1px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      /* Selection */
+      ::selection {
+        background: var(--accent-muted);
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
