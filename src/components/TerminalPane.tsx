@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
@@ -17,6 +17,10 @@ interface Props {
   onToggleMaximize?: () => void;
 }
 
+const DEFAULT_FONT_SIZE = 13;
+const MIN_FONT_SIZE = 8;
+const MAX_FONT_SIZE = 32;
+
 export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isMaximized, onToggleMaximize }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,6 +28,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
   const fitAddonRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
   const onToggleMaximizeRef = useRef(onToggleMaximize);
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
 
   // Keep the ref updated with latest callback
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -34,7 +39,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
 
     const terminal = new Terminal({
       fontFamily: theme.terminal.fontFamily,
-      fontSize: theme.terminal.fontSize,
+      fontSize: DEFAULT_FONT_SIZE,
       cursorBlink: true,
       allowProposedApi: true,
       theme: theme.terminal.theme,
@@ -123,12 +128,44 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
     }
   }, [isMaximized, id]);
 
-  // Handle keyboard shortcut at container level (capture phase)
+  // Update terminal font size when it changes
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.fontSize = fontSize;
+      fitAddonRef.current?.fit();
+      invoke("resize_pty", {
+        id,
+        cols: terminalRef.current.cols,
+        rows: terminalRef.current.rows,
+      }).catch(console.error);
+    }
+  }, [fontSize, id]);
+
+
+  // Handle keyboard shortcuts at container level (capture phase)
   function handleKeyDown(e: React.KeyboardEvent) {
+    // Shift+Cmd+Enter: Toggle maximize
     if (e.shiftKey && e.metaKey && e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
       onToggleMaximize?.();
+      return;
+    }
+
+    // Cmd+Plus or Cmd+=: Increase font size
+    if (e.metaKey && (e.key === "+" || e.key === "=")) {
+      e.preventDefault();
+      e.stopPropagation();
+      setFontSize((prev) => Math.min(prev + 1, MAX_FONT_SIZE));
+      return;
+    }
+
+    // Cmd+Minus: Decrease font size
+    if (e.metaKey && e.key === "-") {
+      e.preventDefault();
+      e.stopPropagation();
+      setFontSize((prev) => Math.max(prev - 1, MIN_FONT_SIZE));
+      return;
     }
   }
 
