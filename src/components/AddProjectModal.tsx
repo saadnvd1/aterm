@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ProviderId, getProviderList } from "../lib/providers";
 import { createProject, ProjectConfig } from "../lib/config";
+import type { Layout } from "../lib/layouts";
 
 interface DirEntry {
   name: string;
@@ -14,17 +15,19 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onProjectAdded: (project: ProjectConfig) => void;
+  layouts: Layout[];
 }
 
 type Mode = "browse" | "clone";
 
-export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
+export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts }: Props) {
   const [mode, setMode] = useState<Mode>("browse");
   const [currentPath, setCurrentPath] = useState("");
   const [entries, setEntries] = useState<DirEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
   const [provider, setProvider] = useState<ProviderId>("claude");
+  const [layoutId, setLayoutId] = useState(layouts[0]?.id || "ai-shell");
   const [cloneUrl, setCloneUrl] = useState("");
   const [cloneDestination, setCloneDestination] = useState("");
   const [loading, setLoading] = useState(false);
@@ -86,10 +89,10 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
         projectName,
         selectedPath,
         provider,
-        gitRemote || undefined
+        gitRemote || undefined,
+        layoutId
       );
 
-      await invoke("add_project", { project });
       onProjectAdded(project);
       onClose();
       resetForm();
@@ -115,9 +118,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
 
       await invoke("clone_repo", { url: cloneUrl, destination });
 
-      const project = createProject(repoName, destination, provider, cloneUrl);
+      const project = createProject(repoName, destination, provider, cloneUrl, layoutId);
 
-      await invoke("add_project", { project });
       onProjectAdded(project);
       onClose();
       resetForm();
@@ -132,6 +134,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
     setSelectedPath(null);
     setProjectName("");
     setProvider("claude");
+    setLayoutId(layouts[0]?.id || "ai-shell");
     setCloneUrl("");
     setError(null);
     setMode("browse");
@@ -236,6 +239,21 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
                     ))}
                   </select>
                 </label>
+
+                <label style={styles.label}>
+                  <span style={styles.labelText}>Layout</span>
+                  <select
+                    value={layoutId}
+                    onChange={(e) => setLayoutId(e.target.value)}
+                    style={styles.select}
+                  >
+                    {layouts.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             )}
           </div>
@@ -284,6 +302,21 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded }: Props) {
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={styles.label}>
+                <span style={styles.labelText}>Layout</span>
+                <select
+                  value={layoutId}
+                  onChange={(e) => setLayoutId(e.target.value)}
+                  style={styles.select}
+                >
+                  {layouts.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
                     </option>
                   ))}
                 </select>

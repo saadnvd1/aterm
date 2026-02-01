@@ -2,13 +2,11 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
-import type { ProjectConfig, AppConfig } from "./lib/config";
+import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 
 export default function App() {
-  const [projects, setProjects] = useState<ProjectConfig[]>([]);
-  const [selectedProject, setSelectedProject] = useState<ProjectConfig | null>(
-    null
-  );
+  const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [selectedProject, setSelectedProject] = useState<ProjectConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,10 +15,19 @@ export default function App() {
 
   async function loadConfig() {
     try {
-      const config = await invoke<AppConfig>("load_config");
-      setProjects(config.projects);
-      if (config.projects.length > 0 && !selectedProject) {
-        setSelectedProject(config.projects[0]);
+      const savedConfig = await invoke<AppConfig | null>("load_config");
+      if (savedConfig) {
+        // Merge with defaults to ensure all fields exist
+        const merged: AppConfig = {
+          ...DEFAULT_CONFIG,
+          ...savedConfig,
+          profiles: savedConfig.profiles?.length ? savedConfig.profiles : DEFAULT_CONFIG.profiles,
+          layouts: savedConfig.layouts?.length ? savedConfig.layouts : DEFAULT_CONFIG.layouts,
+        };
+        setConfig(merged);
+        if (merged.projects.length > 0) {
+          setSelectedProject(merged.projects[0]);
+        }
       }
     } catch (e) {
       console.error("Failed to load config:", e);
@@ -29,8 +36,13 @@ export default function App() {
     }
   }
 
-  function handleProjectsChange(newProjects: ProjectConfig[]) {
-    setProjects(newProjects);
+  async function updateConfig(newConfig: AppConfig) {
+    setConfig(newConfig);
+    try {
+      await invoke("save_config", { config: newConfig });
+    } catch (e) {
+      console.error("Failed to save config:", e);
+    }
   }
 
   function handleSelectProject(project: ProjectConfig | null) {
@@ -45,17 +57,32 @@ export default function App() {
     );
   }
 
+  const currentLayout = selectedProject
+    ? config.layouts.find((l) => l.id === selectedProject.layoutId) || config.layouts[0]
+    : null;
+
   return (
     <div style={styles.container}>
       <ProjectSidebar
-        projects={projects}
+        config={config}
         selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
-        onProjectsChange={handleProjectsChange}
+        onConfigChange={updateConfig}
       />
       <div style={styles.main}>
-        {selectedProject ? (
-          <TerminalLayout key={selectedProject.id} project={selectedProject} />
+        {selectedProject && currentLayout ? (
+          <TerminalLayout
+            key={selectedProject.id}
+            project={selectedProject}
+            layout={currentLayout}
+            profiles={config.profiles}
+            onLayoutChange={(layout) => {
+              const newLayouts = config.layouts.map((l) =>
+                l.id === layout.id ? layout : l
+              );
+              updateConfig({ ...config, layouts: newLayouts });
+            }}
+          />
         ) : (
           <div style={styles.empty}>
             <div style={styles.emptyContent}>

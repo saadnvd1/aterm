@@ -11,9 +11,10 @@ interface Props {
   title: string;
   cwd: string;
   command?: string;
+  accentColor?: string;
 }
 
-export function TerminalPane({ id, title, cwd, command }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -86,7 +87,12 @@ export function TerminalPane({ id, title, cwd, command }: Props) {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={styles.title}>{title}</span>
+        <div style={styles.titleRow}>
+          {accentColor && (
+            <span style={{ ...styles.indicator, backgroundColor: accentColor }} />
+          )}
+          <span style={styles.title}>{title}</span>
+        </div>
         <span style={styles.path}>{cwd.split("/").pop()}</span>
       </div>
       <div ref={containerRef} style={styles.terminal} />
@@ -112,6 +118,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    flexShrink: 0,
+  },
+  titleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  indicator: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
     flexShrink: 0,
   },
   title: {

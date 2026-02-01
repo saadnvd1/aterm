@@ -1,55 +1,16 @@
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 // ============================================================================
-// Config Types
-// ============================================================================
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TerminalConfig {
-    id: String,
-    title: String,
-    command: Option<String>,
-    position: String, // "main" or "side"
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectConfig {
-    id: String,
-    name: String,
-    path: String,
-    git_remote: Option<String>,
-    provider: String,
-    terminals: Vec<TerminalConfig>,
-    created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AppConfig {
-    projects: Vec<ProjectConfig>,
-    default_provider: String,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            projects: Vec::new(),
-            default_provider: "claude".to_string(),
-        }
-    }
-}
-
-// ============================================================================
-// Config File Management
+// Config - stored as flexible JSON to allow frontend to manage schema
 // ============================================================================
 
 fn get_config_path() -> PathBuf {
@@ -68,51 +29,26 @@ fn ensure_config_dir() -> std::io::Result<()> {
 }
 
 #[tauri::command]
-fn load_config() -> Result<AppConfig, String> {
+fn load_config() -> Result<Value, String> {
     let config_path = get_config_path();
 
     if !config_path.exists() {
-        return Ok(AppConfig::default());
+        // Return null, frontend will use defaults
+        return Ok(Value::Null);
     }
 
     let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
-    let config: AppConfig = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    let config: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     Ok(config)
 }
 
 #[tauri::command]
-fn save_config(config: AppConfig) -> Result<(), String> {
+fn save_config(config: Value) -> Result<(), String> {
     ensure_config_dir().map_err(|e| e.to_string())?;
     let config_path = get_config_path();
     let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
     fs::write(&config_path, content).map_err(|e| e.to_string())?;
     Ok(())
-}
-
-#[tauri::command]
-fn add_project(project: ProjectConfig) -> Result<AppConfig, String> {
-    let mut config = load_config()?;
-    config.projects.push(project);
-    save_config(config.clone())?;
-    Ok(config)
-}
-
-#[tauri::command]
-fn remove_project(project_id: String) -> Result<AppConfig, String> {
-    let mut config = load_config()?;
-    config.projects.retain(|p| p.id != project_id);
-    save_config(config.clone())?;
-    Ok(config)
-}
-
-#[tauri::command]
-fn update_project(project: ProjectConfig) -> Result<AppConfig, String> {
-    let mut config = load_config()?;
-    if let Some(existing) = config.projects.iter_mut().find(|p| p.id == project.id) {
-        *existing = project;
-    }
-    save_config(config.clone())?;
-    Ok(config)
 }
 
 // ============================================================================
@@ -142,7 +78,6 @@ fn list_directory(path: Option<String>) -> Result<Vec<DirEntry>, String> {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
 
-        // Skip hidden files unless it's a common directory
         if name.starts_with('.') && name != ".." {
             continue;
         }
@@ -159,7 +94,6 @@ fn list_directory(path: Option<String>) -> Result<Vec<DirEntry>, String> {
     }
 
     entries.sort_by(|a, b| {
-        // Directories first, then alphabetically
         match (a.is_dir, b.is_dir) {
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
@@ -261,13 +195,11 @@ fn spawn_pty(
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
 
-    // Store the PTY handle
     {
         let mut ptys = state.lock().unwrap();
         ptys.insert(id.clone(), PtyHandle { writer, child });
     }
 
-    // Spawn a thread to read PTY output and emit events
     let event_id = id.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 4096];
@@ -329,19 +261,12 @@ pub fn run() {
     tauri::Builder::default()
         .manage(pty_map)
         .invoke_handler(tauri::generate_handler![
-            // Config
             load_config,
             save_config,
-            add_project,
-            remove_project,
-            update_project,
-            // Directory
             list_directory,
             get_home_dir,
-            // Git
             clone_repo,
             get_git_remote,
-            // PTY
             spawn_pty,
             write_pty,
             resize_pty,

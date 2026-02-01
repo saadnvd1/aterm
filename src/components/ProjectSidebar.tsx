@@ -1,22 +1,21 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import type { ProjectConfig } from "../lib/config";
+import type { ProjectConfig, AppConfig } from "../lib/config";
 import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
 import { SettingsModal } from "./SettingsModal";
 
 interface Props {
-  projects: ProjectConfig[];
+  config: AppConfig;
   selectedProject: ProjectConfig | null;
-  onSelectProject: (project: ProjectConfig) => void;
-  onProjectsChange: (projects: ProjectConfig[]) => void;
+  onSelectProject: (project: ProjectConfig | null) => void;
+  onConfigChange: (config: AppConfig) => void;
 }
 
 export function ProjectSidebar({
-  projects,
+  config,
   selectedProject,
   onSelectProject,
-  onProjectsChange,
+  onConfigChange,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -27,26 +26,23 @@ export function ProjectSidebar({
     y: number;
   } | null>(null);
 
-  const filtered = projects.filter((p) =>
+  const filtered = config.projects.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   function handleProjectAdded(project: ProjectConfig) {
-    onProjectsChange([...projects, project]);
+    onConfigChange({
+      ...config,
+      projects: [...config.projects, project],
+    });
+    onSelectProject(project);
   }
 
-  async function handleRemoveProject(projectId: string) {
-    try {
-      const config = await invoke<{ projects: ProjectConfig[] }>(
-        "remove_project",
-        { projectId }
-      );
-      onProjectsChange(config.projects);
-      if (selectedProject?.id === projectId) {
-        onSelectProject(config.projects[0] || null);
-      }
-    } catch (e) {
-      console.error("Failed to remove project:", e);
+  function handleRemoveProject(projectId: string) {
+    const newProjects = config.projects.filter((p) => p.id !== projectId);
+    onConfigChange({ ...config, projects: newProjects });
+    if (selectedProject?.id === projectId) {
+      onSelectProject(newProjects[0] || null);
     }
     setContextMenu(null);
   }
@@ -92,31 +88,35 @@ export function ProjectSidebar({
         <div style={styles.list}>
           {filtered.length === 0 ? (
             <div style={styles.empty}>
-              {projects.length === 0
+              {config.projects.length === 0
                 ? "No projects yet"
                 : "No matches"}
             </div>
           ) : (
-            filtered.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => onSelectProject(project)}
-                onContextMenu={(e) => handleContextMenu(e, project)}
-                style={{
-                  ...styles.item,
-                  ...(selectedProject?.id === project.id
-                    ? styles.itemSelected
-                    : {}),
-                }}
-              >
-                <div style={styles.itemContent}>
-                  <span style={styles.name}>{project.name}</span>
-                  <span style={styles.provider}>
-                    {PROVIDERS[project.provider]?.name || project.provider}
-                  </span>
-                </div>
-              </button>
-            ))
+            filtered.map((project) => {
+              const layout = config.layouts.find((l) => l.id === project.layoutId);
+              return (
+                <button
+                  key={project.id}
+                  onClick={() => onSelectProject(project)}
+                  onContextMenu={(e) => handleContextMenu(e, project)}
+                  style={{
+                    ...styles.item,
+                    ...(selectedProject?.id === project.id
+                      ? styles.itemSelected
+                      : {}),
+                  }}
+                >
+                  <div style={styles.itemContent}>
+                    <span style={styles.name}>{project.name}</span>
+                    <span style={styles.meta}>
+                      {PROVIDERS[project.provider]?.name || project.provider}
+                      {layout && ` · ${layout.name}`}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -145,11 +145,14 @@ export function ProjectSidebar({
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onProjectAdded={handleProjectAdded}
+        layouts={config.layouts}
       />
 
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+        config={config}
+        onConfigChange={onConfigChange}
       />
     </>
   );
@@ -250,11 +253,9 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  provider: {
+  meta: {
     fontSize: "10px",
     color: "var(--text-muted)",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
   },
   contextOverlay: {
     position: "fixed",

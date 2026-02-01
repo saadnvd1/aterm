@@ -1,11 +1,6 @@
-import { ProviderId, getProviderCommand, PROVIDERS } from "./providers";
-
-export interface TerminalConfig {
-  id: string;
-  title: string;
-  command?: string; // If empty, spawns shell
-  position: "main" | "side"; // main = left (2/3), side = right stacked
-}
+import { ProviderId } from "./providers";
+import { TerminalProfile, DEFAULT_PROFILES } from "./profiles";
+import { Layout, DEFAULT_LAYOUTS } from "./layouts";
 
 export interface ProjectConfig {
   id: string;
@@ -13,44 +8,32 @@ export interface ProjectConfig {
   path: string;
   gitRemote?: string;
   provider: ProviderId;
-  terminals: TerminalConfig[];
+  layoutId: string;
   createdAt: string;
 }
 
 export interface AppConfig {
   projects: ProjectConfig[];
+  profiles: TerminalProfile[];
+  layouts: Layout[];
   defaultProvider: ProviderId;
+  defaultLayoutId: string;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
   projects: [],
+  profiles: DEFAULT_PROFILES,
+  layouts: DEFAULT_LAYOUTS,
   defaultProvider: "claude",
+  defaultLayoutId: "ai-shell",
 };
-
-export function getDefaultTerminals(provider: ProviderId): TerminalConfig[] {
-  const command = getProviderCommand(provider);
-  const providerDef = PROVIDERS[provider];
-
-  return [
-    {
-      id: "ai",
-      title: providerDef.name,
-      command,
-      position: "main",
-    },
-    {
-      id: "shell",
-      title: "Shell",
-      position: "side",
-    },
-  ];
-}
 
 export function createProject(
   name: string,
   path: string,
   provider: ProviderId = "claude",
-  gitRemote?: string
+  gitRemote?: string,
+  layoutId: string = "ai-shell"
 ): ProjectConfig {
   return {
     id: crypto.randomUUID(),
@@ -58,7 +41,23 @@ export function createProject(
     path,
     gitRemote,
     provider,
-    terminals: getDefaultTerminals(provider),
+    layoutId,
     createdAt: new Date().toISOString(),
   };
+}
+
+// Helper to get layout for a project
+export function getProjectLayout(
+  config: AppConfig,
+  project: ProjectConfig
+): Layout | undefined {
+  return config.layouts.find((l) => l.id === project.layoutId);
+}
+
+// Helper to get profile by ID
+export function getProfile(
+  config: AppConfig,
+  profileId: string
+): TerminalProfile | undefined {
+  return config.profiles.find((p) => p.id === profileId);
 }
