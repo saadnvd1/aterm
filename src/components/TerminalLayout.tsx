@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { TerminalPane } from "./TerminalPane";
 import type { ProjectConfig } from "../lib/config";
-import type { Layout, LayoutRow } from "../lib/layouts";
+import type { Layout, LayoutRow, LayoutPane } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
 
 interface Props {
@@ -11,7 +11,98 @@ interface Props {
   onLayoutChange: (layout: Layout) => void;
 }
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  paneId: string;
+  rowId: string;
+}
+
 export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Props) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [showProfileSubmenu, setShowProfileSubmenu] = useState<"vertical" | "horizontal" | null>(null);
+
+  function handleContextMenu(e: React.MouseEvent, paneId: string, rowId: string) {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, paneId, rowId });
+    setShowProfileSubmenu(null);
+  }
+
+  function closeContextMenu() {
+    setContextMenu(null);
+    setShowProfileSubmenu(null);
+  }
+
+  function splitVertical(profileId: string) {
+    if (!contextMenu) return;
+
+    const newPane: LayoutPane = {
+      id: crypto.randomUUID(),
+      profileId,
+      flex: 1,
+    };
+
+    const newRows = layout.rows.map((row) => {
+      if (row.id !== contextMenu.rowId) return row;
+
+      const paneIndex = row.panes.findIndex((p) => p.id === contextMenu.paneId);
+      const newPanes = [...row.panes];
+      newPanes.splice(paneIndex + 1, 0, newPane);
+
+      return { ...row, panes: newPanes };
+    });
+
+    onLayoutChange({ ...layout, rows: newRows });
+    closeContextMenu();
+  }
+
+  function splitHorizontal(profileId: string) {
+    if (!contextMenu) return;
+
+    const rowIndex = layout.rows.findIndex((r) => r.id === contextMenu.rowId);
+    const currentRow = layout.rows[rowIndex];
+
+    const newRow: LayoutRow = {
+      id: crypto.randomUUID(),
+      flex: currentRow.flex,
+      panes: [
+        {
+          id: crypto.randomUUID(),
+          profileId,
+          flex: 1,
+        },
+      ],
+    };
+
+    const newRows = [...layout.rows];
+    newRows.splice(rowIndex + 1, 0, newRow);
+
+    onLayoutChange({ ...layout, rows: newRows });
+    closeContextMenu();
+  }
+
+  function closePane() {
+    if (!contextMenu) return;
+
+    const totalPanes = layout.rows.reduce((acc, r) => acc + r.panes.length, 0);
+    if (totalPanes <= 1) return; // Don't close the last pane
+
+    const newRows = layout.rows
+      .map((row) => {
+        if (row.id !== contextMenu.rowId) return row;
+        return {
+          ...row,
+          panes: row.panes.filter((p) => p.id !== contextMenu.paneId),
+        };
+      })
+      .filter((row) => row.panes.length > 0);
+
+    onLayoutChange({ ...layout, rows: newRows });
+    closeContextMenu();
+  }
+
+  const totalPanes = layout.rows.reduce((acc, r) => acc + r.panes.length, 0);
+
   return (
     <div style={styles.container}>
       {layout.rows.map((row, rowIndex) => (
@@ -24,8 +115,103 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
           profiles={profiles}
           layout={layout}
           onLayoutChange={onLayoutChange}
+          onContextMenu={handleContextMenu}
         />
       ))}
+
+      {contextMenu && (
+        <>
+          <div style={styles.contextOverlay} onClick={closeContextMenu} />
+          <div
+            style={{
+              ...styles.contextMenu,
+              left: contextMenu.x,
+              top: contextMenu.y,
+            }}
+          >
+            <div
+              style={styles.contextMenuItem}
+              onMouseEnter={() => setShowProfileSubmenu("vertical")}
+            >
+              <span>Split Vertical</span>
+              <span style={styles.menuArrow}>▸</span>
+              {showProfileSubmenu === "vertical" && (
+                <div style={styles.submenu}>
+                  <button
+                    style={styles.submenuItem}
+                    onClick={() => splitVertical("shell")}
+                  >
+                    Shell (default)
+                  </button>
+                  <div style={styles.submenuDivider} />
+                  {profiles.map((p) => (
+                    <button
+                      key={p.id}
+                      style={styles.submenuItem}
+                      onClick={() => splitVertical(p.id)}
+                    >
+                      <span
+                        style={{
+                          ...styles.profileDot,
+                          backgroundColor: p.color,
+                        }}
+                      />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={styles.contextMenuItem}
+              onMouseEnter={() => setShowProfileSubmenu("horizontal")}
+            >
+              <span>Split Horizontal</span>
+              <span style={styles.menuArrow}>▸</span>
+              {showProfileSubmenu === "horizontal" && (
+                <div style={styles.submenu}>
+                  <button
+                    style={styles.submenuItem}
+                    onClick={() => splitHorizontal("shell")}
+                  >
+                    Shell (default)
+                  </button>
+                  <div style={styles.submenuDivider} />
+                  {profiles.map((p) => (
+                    <button
+                      key={p.id}
+                      style={styles.submenuItem}
+                      onClick={() => splitHorizontal(p.id)}
+                    >
+                      <span
+                        style={{
+                          ...styles.profileDot,
+                          backgroundColor: p.color,
+                        }}
+                      />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {totalPanes > 1 && (
+              <>
+                <div style={styles.menuDivider} />
+                <button
+                  style={styles.contextMenuItemButton}
+                  onClick={closePane}
+                  onMouseEnter={() => setShowProfileSubmenu(null)}
+                >
+                  Close Pane
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -38,6 +224,7 @@ interface RowProps {
   profiles: TerminalProfile[];
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
+  onContextMenu: (e: React.MouseEvent, paneId: string, rowId: string) => void;
 }
 
 function RowWithResizer({
@@ -48,6 +235,7 @@ function RowWithResizer({
   profiles,
   layout,
   onLayoutChange,
+  onContextMenu,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,6 +303,7 @@ function RowWithResizer({
               row={row}
               layout={layout}
               onLayoutChange={onLayoutChange}
+              onContextMenu={(e) => onContextMenu(e, pane.id, row.id)}
             />
           );
         })}
@@ -142,6 +331,7 @@ interface PaneProps {
   row: LayoutRow;
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }
 
 function PaneWithResizer({
@@ -154,6 +344,7 @@ function PaneWithResizer({
   row,
   layout,
   onLayoutChange,
+  onContextMenu,
 }: PaneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +409,11 @@ function PaneWithResizer({
 
   return (
     <>
-      <div ref={containerRef} style={{ ...styles.pane, flex }}>
+      <div
+        ref={containerRef}
+        style={{ ...styles.pane, flex }}
+        onContextMenu={onContextMenu}
+      >
         <TerminalPane
           id={`${project.id}-${paneId}`}
           title={profile.name}
@@ -286,5 +481,95 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "12px",
     backgroundColor: "var(--bg-secondary)",
     borderRadius: "8px",
+  },
+  contextOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  contextMenu: {
+    position: "fixed",
+    backgroundColor: "var(--bg-tertiary)",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+    zIndex: 1000,
+    minWidth: "160px",
+    padding: "4px",
+    overflow: "visible",
+  },
+  contextMenuItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px 12px",
+    color: "var(--text)",
+    fontSize: "12px",
+    cursor: "pointer",
+    borderRadius: "4px",
+    position: "relative",
+  },
+  contextMenuItemButton: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px 12px",
+    backgroundColor: "transparent",
+    border: "none",
+    color: "var(--text)",
+    fontSize: "12px",
+    cursor: "pointer",
+    borderRadius: "4px",
+    textAlign: "left",
+  },
+  menuArrow: {
+    fontSize: "10px",
+    color: "var(--text-muted)",
+  },
+  menuDivider: {
+    height: "1px",
+    backgroundColor: "var(--border-subtle)",
+    margin: "4px 0",
+  },
+  submenu: {
+    position: "absolute",
+    left: "100%",
+    top: 0,
+    backgroundColor: "var(--bg-tertiary)",
+    border: "1px solid var(--border)",
+    borderRadius: "8px",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+    minWidth: "140px",
+    padding: "4px",
+    marginLeft: "4px",
+  },
+  submenuItem: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "8px 12px",
+    backgroundColor: "transparent",
+    border: "none",
+    color: "var(--text)",
+    fontSize: "12px",
+    cursor: "pointer",
+    borderRadius: "4px",
+    textAlign: "left",
+  },
+  submenuDivider: {
+    height: "1px",
+    backgroundColor: "var(--border-subtle)",
+    margin: "4px 0",
+  },
+  profileDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    flexShrink: 0,
   },
 };

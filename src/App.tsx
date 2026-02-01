@@ -7,11 +7,19 @@ import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 export default function App() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [selectedProject, setSelectedProject] = useState<ProjectConfig | null>(null);
+  const [openedProjects, setOpenedProjects] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  // Track when a project is selected for the first time
+  useEffect(() => {
+    if (selectedProject && !openedProjects.has(selectedProject.id)) {
+      setOpenedProjects((prev) => new Set([...prev, selectedProject.id]));
+    }
+  }, [selectedProject, openedProjects]);
 
   async function loadConfig() {
     try {
@@ -49,6 +57,16 @@ export default function App() {
     setSelectedProject(project);
   }
 
+  // Clean up opened projects set when a project is removed
+  function handleConfigChange(newConfig: AppConfig) {
+    const projectIds = new Set(newConfig.projects.map((p) => p.id));
+    const newOpened = new Set([...openedProjects].filter((id) => projectIds.has(id)));
+    if (newOpened.size !== openedProjects.size) {
+      setOpenedProjects(newOpened);
+    }
+    updateConfig(newConfig);
+  }
+
   if (loading) {
     return (
       <div style={styles.loading}>
@@ -57,9 +75,8 @@ export default function App() {
     );
   }
 
-  const currentLayout = selectedProject
-    ? config.layouts.find((l) => l.id === selectedProject.layoutId) || config.layouts[0]
-    : null;
+  // Get all projects that have been opened (terminals spawned)
+  const openedProjectsList = config.projects.filter((p) => openedProjects.has(p.id));
 
   return (
     <div style={styles.container}>
@@ -67,22 +84,37 @@ export default function App() {
         config={config}
         selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
-        onConfigChange={updateConfig}
+        onConfigChange={handleConfigChange}
       />
       <div style={styles.main}>
-        {selectedProject && currentLayout ? (
-          <TerminalLayout
-            key={selectedProject.id}
-            project={selectedProject}
-            layout={currentLayout}
-            profiles={config.profiles}
-            onLayoutChange={(layout) => {
-              const newLayouts = config.layouts.map((l) =>
-                l.id === layout.id ? layout : l
-              );
-              updateConfig({ ...config, layouts: newLayouts });
-            }}
-          />
+        {openedProjectsList.length > 0 ? (
+          // Render all opened projects, hide inactive ones
+          openedProjectsList.map((project) => {
+            const layout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
+            const isActive = selectedProject?.id === project.id;
+
+            return (
+              <div
+                key={project.id}
+                style={{
+                  ...styles.terminalContainer,
+                  display: isActive ? "flex" : "none",
+                }}
+              >
+                <TerminalLayout
+                  project={project}
+                  layout={layout}
+                  profiles={config.profiles}
+                  onLayoutChange={(newLayout) => {
+                    const newLayouts = config.layouts.map((l) =>
+                      l.id === newLayout.id ? newLayout : l
+                    );
+                    updateConfig({ ...config, layouts: newLayouts });
+                  }}
+                />
+              </div>
+            );
+          })
         ) : (
           <div style={styles.empty}>
             <div style={styles.emptyContent}>
@@ -111,6 +143,15 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     overflow: "hidden",
     backgroundColor: "var(--bg)",
+    position: "relative",
+  },
+  terminalContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "column",
   },
   loading: {
     display: "flex",
