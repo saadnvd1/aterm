@@ -102,23 +102,26 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
     closeContextMenu();
   }
 
-  function closePane() {
-    if (!contextMenu) return;
-
+  function closePaneById(paneId: string, rowId: string) {
     const totalPanes = layout.rows.reduce((acc, r) => acc + r.panes.length, 0);
     if (totalPanes <= 1) return; // Don't close the last pane
 
     const newRows = layout.rows
       .map((row) => {
-        if (row.id !== contextMenu.rowId) return row;
+        if (row.id !== rowId) return row;
         return {
           ...row,
-          panes: row.panes.filter((p) => p.id !== contextMenu.paneId),
+          panes: row.panes.filter((p) => p.id !== paneId),
         };
       })
       .filter((row) => row.panes.length > 0);
 
     onLayoutChange({ ...layout, rows: newRows });
+  }
+
+  function closePane() {
+    if (!contextMenu) return;
+    closePaneById(contextMenu.paneId, contextMenu.rowId);
     closeContextMenu();
   }
 
@@ -132,6 +135,7 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
           row={row}
           rowIndex={rowIndex}
           totalRows={layout.rows.length}
+          totalPanes={totalPanes}
           project={project}
           profiles={profiles}
           layout={layout}
@@ -142,6 +146,7 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
           onToggleMaximize={(paneId) => {
             setMaximizedPaneId((current) => (current === paneId ? null : paneId));
           }}
+          onClosePane={closePaneById}
         />
       ))}
 
@@ -246,6 +251,7 @@ interface RowProps {
   row: LayoutRow;
   rowIndex: number;
   totalRows: number;
+  totalPanes: number;
   project: ProjectConfig;
   profiles: TerminalProfile[];
   layout: Layout;
@@ -254,12 +260,14 @@ interface RowProps {
   onPaneFocus: (paneId: string) => void;
   maximizedPaneId: string | null;
   onToggleMaximize: (paneId: string) => void;
+  onClosePane: (paneId: string, rowId: string) => void;
 }
 
 function RowWithResizer({
   row,
   rowIndex,
   totalRows,
+  totalPanes,
   project,
   profiles,
   layout,
@@ -268,6 +276,7 @@ function RowWithResizer({
   onPaneFocus,
   maximizedPaneId,
   onToggleMaximize,
+  onClosePane,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -340,6 +349,8 @@ function RowWithResizer({
               isMaximized={maximizedPaneId === pane.id}
               isHidden={maximizedPaneId !== null && maximizedPaneId !== pane.id}
               onToggleMaximize={() => onToggleMaximize(pane.id)}
+              onClosePane={() => onClosePane(pane.id, row.id)}
+              canClose={totalPanes > 1}
             />
           );
         })}
@@ -372,6 +383,8 @@ interface PaneProps {
   isMaximized: boolean;
   isHidden: boolean;
   onToggleMaximize: () => void;
+  onClosePane: () => void;
+  canClose: boolean;
 }
 
 function PaneWithResizer({
@@ -389,6 +402,8 @@ function PaneWithResizer({
   isMaximized,
   isHidden,
   onToggleMaximize,
+  onClosePane,
+  canClose,
 }: PaneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -473,6 +488,8 @@ function PaneWithResizer({
           onFocus={onFocus}
           isMaximized={isMaximized}
           onToggleMaximize={onToggleMaximize}
+          onClose={onClosePane}
+          canClose={canClose}
         />
         {isMaximized && (
           <button

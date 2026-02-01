@@ -3,23 +3,50 @@ import { invoke } from "@tauri-apps/api/core";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
 import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
+import type { Layout } from "./lib/layouts";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [selectedProject, setSelectedProject] = useState<ProjectConfig | null>(null);
   const [openedProjects, setOpenedProjects] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  // Runtime layouts track unsaved changes per project (keyed by project.id)
+  const [runtimeLayouts, setRuntimeLayouts] = useState<Record<string, Layout>>({});
 
   useEffect(() => {
     loadConfig();
   }, []);
 
-  // Track when a project is selected for the first time
+  // Track when a project is selected for the first time and initialize its runtime layout
   useEffect(() => {
     if (selectedProject && !openedProjects.has(selectedProject.id)) {
       setOpenedProjects((prev) => new Set([...prev, selectedProject.id]));
+      // Initialize runtime layout from saved layout
+      const savedLayout = config.layouts.find((l) => l.id === selectedProject.layoutId) || config.layouts[0];
+      if (savedLayout && !runtimeLayouts[selectedProject.id]) {
+        setRuntimeLayouts((prev) => ({
+          ...prev,
+          [selectedProject.id]: JSON.parse(JSON.stringify(savedLayout)), // Deep copy
+        }));
+      }
     }
-  }, [selectedProject, openedProjects]);
+  }, [selectedProject, openedProjects, config.layouts, runtimeLayouts]);
+
+  // Keyboard shortcuts for project switching (Cmd+1 through Cmd+9)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.metaKey && e.key >= "1" && e.key <= "9") {
+        const index = parseInt(e.key, 10) - 1;
+        if (index < config.projects.length) {
+          e.preventDefault();
+          setSelectedProject(config.projects[index]);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [config.projects]);
 
   async function loadConfig() {
     try {
@@ -64,7 +91,50 @@ export default function App() {
     if (newOpened.size !== openedProjects.size) {
       setOpenedProjects(newOpened);
     }
+    // Also clean up runtime layouts
+    const newRuntimeLayouts = { ...runtimeLayouts };
+    for (const id of Object.keys(newRuntimeLayouts)) {
+      if (!projectIds.has(id)) {
+        delete newRuntimeLayouts[id];
+      }
+    }
+    setRuntimeLayouts(newRuntimeLayouts);
     updateConfig(newConfig);
+  }
+
+  // Save the current runtime layout to the saved config
+  function handleSaveWindowArrangement(projectId: string) {
+    const project = config.projects.find((p) => p.id === projectId);
+    const runtimeLayout = runtimeLayouts[projectId];
+    if (!project || !runtimeLayout) return;
+
+    // Update the saved layout with the runtime layout's rows
+    const newLayouts = config.layouts.map((l) =>
+      l.id === project.layoutId ? { ...l, rows: JSON.parse(JSON.stringify(runtimeLayout.rows)) } : l
+    );
+    updateConfig({ ...config, layouts: newLayouts });
+  }
+
+  // Restore the saved layout to runtime
+  function handleRestoreWindowArrangement(projectId: string) {
+    const project = config.projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const savedLayout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
+    if (savedLayout) {
+      setRuntimeLayouts((prev) => ({
+        ...prev,
+        [projectId]: JSON.parse(JSON.stringify(savedLayout)),
+      }));
+    }
+  }
+
+  // Update runtime layout (not saved to config)
+  function handleRuntimeLayoutChange(projectId: string, newLayout: Layout) {
+    setRuntimeLayouts((prev) => ({
+      ...prev,
+      [projectId]: newLayout,
+    }));
   }
 
   if (loading) {
@@ -85,12 +155,16 @@ export default function App() {
         selectedProject={selectedProject}
         onSelectProject={handleSelectProject}
         onConfigChange={handleConfigChange}
+        onSaveWindowArrangement={handleSaveWindowArrangement}
+        onRestoreWindowArrangement={handleRestoreWindowArrangement}
       />
       <div style={styles.main}>
         {openedProjectsList.length > 0 ? (
           // Render all opened projects, hide inactive ones
           openedProjectsList.map((project) => {
-            const layout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
+            // Use runtime layout if available, otherwise fall back to saved layout
+            const savedLayout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
+            const layout = runtimeLayouts[project.id] || savedLayout;
             const isActive = selectedProject?.id === project.id;
 
             return (
@@ -106,10 +180,7 @@ export default function App() {
                   layout={layout}
                   profiles={config.profiles}
                   onLayoutChange={(newLayout) => {
-                    const newLayouts = config.layouts.map((l) =>
-                      l.id === newLayout.id ? newLayout : l
-                    );
-                    updateConfig({ ...config, layouts: newLayouts });
+                    handleRuntimeLayoutChange(project.id, newLayout);
                   }}
                 />
               </div>

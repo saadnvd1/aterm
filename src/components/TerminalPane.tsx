@@ -15,13 +15,15 @@ interface Props {
   onFocus?: () => void;
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
+  onClose?: () => void;
+  canClose?: boolean;
 }
 
 const DEFAULT_FONT_SIZE = 13;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 32;
 
-export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isMaximized, onToggleMaximize }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isMaximized, onToggleMaximize, onClose, canClose }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -29,6 +31,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
   const spawnedRef = useRef(false);
   const onToggleMaximizeRef = useRef(onToggleMaximize);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const [closeHovered, setCloseHovered] = useState(false);
 
   // Keep the ref updated with latest callback
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -178,7 +181,26 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
           )}
           <span style={styles.title}>{title}</span>
         </div>
-        <span style={styles.path}>{cwd.split("/").pop()}</span>
+        <div style={styles.headerRight}>
+          <span style={styles.path}>{cwd.split("/").pop()}</span>
+          {canClose && (
+            <button
+              style={{
+                ...styles.closeButton,
+                ...(closeHovered ? { opacity: 1, backgroundColor: "var(--bg-tertiary)" } : {}),
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose?.();
+              }}
+              onMouseEnter={() => setCloseHovered(true)}
+              onMouseLeave={() => setCloseHovered(false)}
+              title="Close pane"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       <div ref={containerRef} style={styles.terminal} />
     </div>
@@ -224,6 +246,26 @@ const styles: Record<string, React.CSSProperties> = {
   path: {
     fontSize: "11px",
     color: "var(--text-subtle)",
+  },
+  headerRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  closeButton: {
+    width: "18px",
+    height: "18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    border: "none",
+    borderRadius: "4px",
+    color: "var(--text-muted)",
+    fontSize: "16px",
+    cursor: "pointer",
+    opacity: 0.6,
+    transition: "opacity 0.15s ease, background-color 0.15s ease",
   },
   terminal: {
     flex: 1,

@@ -9,6 +9,8 @@ interface Props {
   selectedProject: ProjectConfig | null;
   onSelectProject: (project: ProjectConfig | null) => void;
   onConfigChange: (config: AppConfig) => void;
+  onSaveWindowArrangement: (projectId: string) => void;
+  onRestoreWindowArrangement: (projectId: string) => void;
 }
 
 export function ProjectSidebar({
@@ -16,6 +18,8 @@ export function ProjectSidebar({
   selectedProject,
   onSelectProject,
   onConfigChange,
+  onSaveWindowArrangement,
+  onRestoreWindowArrangement,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -133,9 +137,28 @@ export function ProjectSidebar({
           >
             <button
               style={styles.contextMenuItem}
+              onClick={() => {
+                onSaveWindowArrangement(contextMenu.project.id);
+                setContextMenu(null);
+              }}
+            >
+              Save Window Arrangement
+            </button>
+            <button
+              style={styles.contextMenuItem}
+              onClick={() => {
+                onRestoreWindowArrangement(contextMenu.project.id);
+                setContextMenu(null);
+              }}
+            >
+              Restore Window Arrangement
+            </button>
+            <div style={styles.menuDivider} />
+            <button
+              style={{ ...styles.contextMenuItem, color: "var(--danger, #ef4444)" }}
               onClick={() => handleRemoveProject(contextMenu.project.id)}
             >
-              Remove
+              Remove Project
             </button>
           </div>
         </>
@@ -286,5 +309,10 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     textAlign: "left",
     transition: "background-color 0.15s ease",
+  },
+  menuDivider: {
+    height: "1px",
+    backgroundColor: "var(--border-subtle)",
+    margin: "4px 0",
   },
 };
