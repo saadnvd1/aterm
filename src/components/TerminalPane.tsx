@@ -12,14 +12,21 @@ interface Props {
   cwd: string;
   command?: string;
   accentColor?: string;
+  onFocus?: () => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
 }
 
-export function TerminalPane({ id, title, cwd, command, accentColor }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isMaximized, onToggleMaximize }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
+  const onToggleMaximizeRef = useRef(onToggleMaximize);
+
+  // Keep the ref updated with latest callback
+  onToggleMaximizeRef.current = onToggleMaximize;
 
   useEffect(() => {
     if (!containerRef.current || spawnedRef.current) return;
@@ -61,6 +68,20 @@ export function TerminalPane({ id, title, cwd, command, accentColor }: Props) {
       invoke("write_pty", { id, data }).catch(console.error);
     });
 
+    // Intercept Shift+Cmd+Enter for maximize toggle
+    terminal.attachCustomKeyEventHandler((e) => {
+      // Check for Shift+Cmd+Enter (keyCode 13 is Enter)
+      if (e.shiftKey && e.metaKey && (e.key === "Enter" || e.keyCode === 13)) {
+        if (e.type === "keydown") {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleMaximizeRef.current?.();
+        }
+        return false; // Prevent terminal from processing this key
+      }
+      return true; // Let terminal handle all other keys
+    });
+
     let resizeTimeout: number;
     const resizeObserver = new ResizeObserver(() => {
       clearTimeout(resizeTimeout);
@@ -84,8 +105,35 @@ export function TerminalPane({ id, title, cwd, command, accentColor }: Props) {
     };
   }, [id, cwd, command, theme]);
 
+  // Refit terminal when maximized state changes
+  useEffect(() => {
+    if (fitAddonRef.current) {
+      // Small delay to let CSS transition complete
+      const timeout = setTimeout(() => {
+        fitAddonRef.current?.fit();
+        if (terminalRef.current) {
+          invoke("resize_pty", {
+            id,
+            cols: terminalRef.current.cols,
+            rows: terminalRef.current.rows,
+          }).catch(console.error);
+        }
+      }, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [isMaximized, id]);
+
+  // Handle keyboard shortcut at container level (capture phase)
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.shiftKey && e.metaKey && e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggleMaximize?.();
+    }
+  }
+
   return (
-    <div style={styles.container}>
+    <div style={styles.container} onClick={onFocus} onKeyDownCapture={handleKeyDown}>
       <div style={styles.header}>
         <div style={styles.titleRow}>
           {accentColor && (

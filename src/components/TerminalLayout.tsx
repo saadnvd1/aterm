@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { TerminalPane } from "./TerminalPane";
 import type { ProjectConfig } from "../lib/config";
 import type { Layout, LayoutRow, LayoutPane } from "../lib/layouts";
@@ -21,6 +21,27 @@ interface ContextMenuState {
 export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showProfileSubmenu, setShowProfileSubmenu] = useState<"vertical" | "horizontal" | null>(null);
+  const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
+  const [maximizedPaneId, setMaximizedPaneId] = useState<string | null>(null);
+
+  // Listen for Shift+Cmd+Enter to toggle maximize
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.shiftKey && e.metaKey && e.key === "Enter") {
+        e.preventDefault();
+        if (maximizedPaneId) {
+          // Already maximized, restore
+          setMaximizedPaneId(null);
+        } else if (focusedPaneId) {
+          // Maximize the focused pane
+          setMaximizedPaneId(focusedPaneId);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focusedPaneId, maximizedPaneId]);
 
   function handleContextMenu(e: React.MouseEvent, paneId: string, rowId: string) {
     e.preventDefault();
@@ -116,6 +137,11 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
           layout={layout}
           onLayoutChange={onLayoutChange}
           onContextMenu={handleContextMenu}
+          onPaneFocus={setFocusedPaneId}
+          maximizedPaneId={maximizedPaneId}
+          onToggleMaximize={(paneId) => {
+            setMaximizedPaneId((current) => (current === paneId ? null : paneId));
+          }}
         />
       ))}
 
@@ -225,6 +251,9 @@ interface RowProps {
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
   onContextMenu: (e: React.MouseEvent, paneId: string, rowId: string) => void;
+  onPaneFocus: (paneId: string) => void;
+  maximizedPaneId: string | null;
+  onToggleMaximize: (paneId: string) => void;
 }
 
 function RowWithResizer({
@@ -236,6 +265,9 @@ function RowWithResizer({
   layout,
   onLayoutChange,
   onContextMenu,
+  onPaneFocus,
+  maximizedPaneId,
+  onToggleMaximize,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -304,11 +336,15 @@ function RowWithResizer({
               layout={layout}
               onLayoutChange={onLayoutChange}
               onContextMenu={(e) => onContextMenu(e, pane.id, row.id)}
+              onFocus={() => onPaneFocus(pane.id)}
+              isMaximized={maximizedPaneId === pane.id}
+              isHidden={maximizedPaneId !== null && maximizedPaneId !== pane.id}
+              onToggleMaximize={() => onToggleMaximize(pane.id)}
             />
           );
         })}
       </div>
-      {rowIndex < totalRows - 1 && (
+      {rowIndex < totalRows - 1 && !maximizedPaneId && (
         <div
           style={{
             ...styles.rowResizer,
@@ -332,6 +368,10 @@ interface PaneProps {
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
   onContextMenu: (e: React.MouseEvent) => void;
+  onFocus: () => void;
+  isMaximized: boolean;
+  isHidden: boolean;
+  onToggleMaximize: () => void;
 }
 
 function PaneWithResizer({
@@ -345,6 +385,10 @@ function PaneWithResizer({
   layout,
   onLayoutChange,
   onContextMenu,
+  onFocus,
+  isMaximized,
+  isHidden,
+  onToggleMaximize,
 }: PaneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -407,11 +451,17 @@ function PaneWithResizer({
     );
   }
 
+  const paneStyle = isMaximized
+    ? styles.paneMaximized
+    : isHidden
+    ? { ...styles.pane, flex, visibility: "hidden" as const }
+    : { ...styles.pane, flex };
+
   return (
     <>
       <div
         ref={containerRef}
-        style={{ ...styles.pane, flex }}
+        style={paneStyle}
         onContextMenu={onContextMenu}
       >
         <TerminalPane
@@ -420,13 +470,26 @@ function PaneWithResizer({
           cwd={project.path}
           command={profile.command}
           accentColor={profile.color}
+          onFocus={onFocus}
+          isMaximized={isMaximized}
+          onToggleMaximize={onToggleMaximize}
         />
+        {isMaximized && (
+          <button
+            style={styles.restoreButton}
+            onClick={onToggleMaximize}
+            title="Restore (Shift+Cmd+Enter)"
+          >
+            ⤢
+          </button>
+        )}
       </div>
-      {!isLast && (
+      {!isLast && !isMaximized && (
         <div
           style={{
             ...styles.paneResizer,
             ...(isDragging ? styles.resizerActive : {}),
+            ...(isHidden ? { visibility: "hidden" as const } : {}),
           }}
           onMouseDown={handlePaneResize}
         />
@@ -454,6 +517,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     minWidth: 0,
     minHeight: 0,
+  },
+  paneMaximized: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    display: "flex",
   },
   rowResizer: {
     height: "6px",
@@ -571,5 +643,24 @@ const styles: Record<string, React.CSSProperties> = {
     height: "8px",
     borderRadius: "50%",
     flexShrink: 0,
+  },
+  restoreButton: {
+    position: "absolute",
+    top: "12px",
+    right: "12px",
+    width: "28px",
+    height: "28px",
+    backgroundColor: "var(--bg-tertiary)",
+    border: "1px solid var(--border)",
+    borderRadius: "6px",
+    color: "var(--text-muted)",
+    fontSize: "14px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 110,
+    opacity: 0.7,
+    transition: "opacity 0.15s ease",
   },
 };
