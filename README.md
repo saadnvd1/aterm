@@ -1,5 +1,8 @@
 # aTerm
 
+[![Download](https://img.shields.io/github/v/release/saadnvd1/aterm?label=Download&style=flat-square)](https://github.com/saadnvd1/aterm/releases/latest)
+[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-blue?style=flat-square)](https://github.com/saadnvd1/aterm/releases/latest)
+
 A modern terminal workspace designed for agentic coding workflows. Run AI coding assistants (Claude Code, Aider, OpenCode) alongside your shell, dev server, and git panel in a unified, project-based interface.
 
 ![aTerm Screenshot](https://github.com/saadnvd1/aterm/raw/main/screenshot.png)
@@ -49,9 +52,9 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 
 ## Installation
 
-### Download
+### macOS (Apple Silicon)
 
-Download the latest release from [Releases](https://github.com/saadnvd1/aterm/releases).
+Download the latest `.dmg` from [Releases](https://github.com/saadnvd1/aterm/releases/latest) - signed and notarized.
 
 ### Build from Source
 
