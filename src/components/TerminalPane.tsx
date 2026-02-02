@@ -58,6 +58,7 @@ interface Props {
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   onSerialize?: () => string;
+  isProjectActive?: boolean;
 }
 
 // Expose serialize function ref for external use (context menu)
@@ -68,7 +69,7 @@ const MAX_FONT_SIZE = 32;
 
 const DEFAULT_SCROLLBACK = 10000;
 
-export function TerminalPane({ id, title, cwd, command, accentColor, defaultFontSize = 13, fontSize: savedFontSize, scrollback = DEFAULT_SCROLLBACK, onFontSizeChange, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, defaultFontSize = 13, fontSize: savedFontSize, scrollback = DEFAULT_SCROLLBACK, onFontSizeChange, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps, isProjectActive = true }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -335,9 +336,10 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
     }
   }, [defaultFontSize, savedFontSize]);
 
-  // Handle file drag and drop - only for focused pane
+  // Handle file drag and drop - only for focused pane in active project
   useEffect(() => {
-    if (!isFocused) return;
+    // Must be both focused within the layout AND the project must be active
+    if (!isFocused || !isProjectActive) return;
 
     const webview = getCurrentWebview();
 
@@ -363,7 +365,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [id, isFocused]);
+  }, [id, isFocused, isProjectActive]);
 
   // Search functions
   function openSearch() {

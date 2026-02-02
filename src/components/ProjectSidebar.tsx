@@ -76,7 +76,14 @@ export function ProjectSidebar({
   return (
     <>
       <div className="w-[220px] bg-secondary border-r border-border flex flex-col">
-        <div className="px-4 py-3.5 flex justify-end items-center border-b border-border">
+        <div className="px-4 py-3.5 flex justify-between items-center border-b border-border">
+          {import.meta.env.DEV ? (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400 uppercase tracking-wide">
+              Dev
+            </span>
+          ) : (
+            <span />
+          )}
           <div className="flex gap-1">
             <Button
               variant="ghost"

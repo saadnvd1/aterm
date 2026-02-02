@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
@@ -21,6 +22,13 @@ export default function App() {
 
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  // Set window title to include [DEV] in development mode
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      getCurrentWindow().setTitle("aTerm [DEV]");
+    }
   }, []);
 
   // Listen for exit request from window close
@@ -346,6 +354,7 @@ export default function App() {
                   onPersistentLayoutChange={(newLayout) => {
                     handlePersistentLayoutChange(project.id, newLayout);
                   }}
+                  isProjectActive={isActive}
                 />
               </div>
             );

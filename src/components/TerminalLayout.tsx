@@ -68,9 +68,10 @@ interface Props {
   onPaneFontSizeChange: (paneInstanceId: string, fontSize: number) => void;
   onLayoutChange: (layout: Layout) => void;
   onPersistentLayoutChange?: (layout: Layout) => void;
+  isProjectActive?: boolean;
 }
 
-export function TerminalLayout({ project, layout, profiles, defaultFontSize, defaultScrollback, paneFontSizes, onPaneFontSizeChange, onLayoutChange, onPersistentLayoutChange }: Props) {
+export function TerminalLayout({ project, layout, profiles, defaultFontSize, defaultScrollback, paneFontSizes, onPaneFontSizeChange, onLayoutChange, onPersistentLayoutChange, isProjectActive = true }: Props) {
   const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
   const [maximizedPaneId, setMaximizedPaneId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -451,6 +452,7 @@ export function TerminalLayout({ project, layout, profiles, defaultFontSize, def
                 onRenamingComplete={() => setRenamingPaneId(null)}
                 onStartRename={(paneId) => setRenamingPaneId(paneId)}
                 activeDragId={activeDragId}
+                isProjectActive={isProjectActive}
               />
               {/* Drop zone after each row */}
               {activeDragId && <RowDropZone id={`row-drop-${rowIndex + 1}`} />}
@@ -500,6 +502,7 @@ interface RowProps {
   onRenamingComplete: () => void;
   onStartRename: (paneId: string) => void;
   activeDragId: string | null;
+  isProjectActive: boolean;
 }
 
 function RowWithResizer({
@@ -527,6 +530,7 @@ function RowWithResizer({
   onRenamingComplete,
   onStartRename,
   activeDragId,
+  isProjectActive,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -617,6 +621,7 @@ function RowWithResizer({
               onTriggerRenameComplete={onRenamingComplete}
               onStartRename={() => onStartRename(pane.id)}
               activeDragId={activeDragId}
+              isProjectActive={isProjectActive}
             />
           );
         })}
@@ -664,6 +669,7 @@ interface PaneProps {
   onTriggerRenameComplete: () => void;
   onStartRename: () => void;
   activeDragId: string | null;
+  isProjectActive: boolean;
 }
 
 function SortablePane({
@@ -696,6 +702,7 @@ function SortablePane({
   onTriggerRenameComplete,
   onStartRename,
   activeDragId,
+  isProjectActive,
 }: PaneProps) {
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -813,6 +820,7 @@ function SortablePane({
           onTriggerRenameComplete={onTriggerRenameComplete}
           canClose={canClose}
           dragHandleProps={{ ...attributes, ...listeners }}
+          isProjectActive={isProjectActive}
         />
       )}
       {isMaximized && (
