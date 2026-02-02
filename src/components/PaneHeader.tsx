@@ -11,6 +11,8 @@ interface Props {
   canClose?: boolean;
   onClose?: () => void;
   onRename?: (name: string) => void;
+  triggerRename?: boolean;
+  onTriggerRenameComplete?: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   titleExtra?: React.ReactNode;
   actions?: React.ReactNode;
@@ -24,6 +26,8 @@ export function PaneHeader({
   canClose,
   onClose,
   onRename,
+  triggerRename,
+  onTriggerRenameComplete,
   dragHandleProps,
   titleExtra,
   actions,
@@ -31,6 +35,15 @@ export function PaneHeader({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Trigger rename from external source (context menu)
+  useEffect(() => {
+    if (triggerRename && onRename) {
+      setEditValue(title);
+      setIsEditing(true);
+      onTriggerRenameComplete?.();
+    }
+  }, [triggerRename, title, onRename, onTriggerRenameComplete]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {

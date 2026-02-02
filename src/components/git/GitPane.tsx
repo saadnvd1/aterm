@@ -21,13 +21,15 @@ interface Props {
   isFocused?: boolean;
   onClose?: () => void;
   onRename?: (name: string) => void;
+  triggerRename?: boolean;
+  onTriggerRenameComplete?: () => void;
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 const POLL_INTERVAL = 5000;
 
-export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, onRename, canClose, dragHandleProps }: Props) {
+export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
   const [activeTab, setActiveTab] = useState<GitTab>("changes");
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
@@ -249,6 +251,8 @@ export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, 
         canClose={canClose}
         onClose={onClose}
         onRename={onRename}
+        triggerRename={triggerRename}
+        onTriggerRenameComplete={onTriggerRenameComplete}
         dragHandleProps={dragHandleProps}
         titleExtra={branchDisplay}
         actions={refreshButton}

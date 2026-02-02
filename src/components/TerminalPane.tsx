@@ -20,6 +20,8 @@ interface Props {
   onToggleMaximize?: () => void;
   onClose?: () => void;
   onRename?: (name: string) => void;
+  triggerRename?: boolean;
+  onTriggerRenameComplete?: () => void;
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
@@ -28,7 +30,7 @@ const DEFAULT_FONT_SIZE = 13;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 32;
 
-export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, canClose, dragHandleProps }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -252,6 +254,8 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
         canClose={canClose}
         onClose={onClose}
         onRename={onRename}
+        triggerRename={triggerRename}
+        onTriggerRenameComplete={onTriggerRenameComplete}
         dragHandleProps={dragHandleProps}
       />
       <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />

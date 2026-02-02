@@ -153,6 +153,24 @@ export default function App() {
     }));
   }
 
+  // Update runtime layout AND persist to config (for renames, etc.)
+  function handlePersistentLayoutChange(projectId: string, newLayout: Layout) {
+    // Update runtime state
+    setRuntimeLayouts((prev) => ({
+      ...prev,
+      [projectId]: newLayout,
+    }));
+
+    // Also save to config
+    const project = config.projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    const newLayouts = config.layouts.map((l) =>
+      l.id === project.layoutId ? { ...l, rows: JSON.parse(JSON.stringify(newLayout.rows)) } : l
+    );
+    updateConfig({ ...config, layouts: newLayouts });
+  }
+
   // Add a git pane to the current project's layout
   function handleAddGitPane() {
     if (!selectedProject) return;
@@ -234,6 +252,9 @@ export default function App() {
                   profiles={config.profiles}
                   onLayoutChange={(newLayout) => {
                     handleRuntimeLayoutChange(project.id, newLayout);
+                  }}
+                  onPersistentLayoutChange={(newLayout) => {
+                    handlePersistentLayoutChange(project.id, newLayout);
                   }}
                 />
               </div>

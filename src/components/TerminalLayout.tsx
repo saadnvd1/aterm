@@ -30,6 +30,7 @@ interface Props {
   layout: Layout;
   profiles: TerminalProfile[];
   onLayoutChange: (layout: Layout) => void;
+  onPersistentLayoutChange?: (layout: Layout) => void;
 }
 
 interface ContextMenuState {
@@ -39,12 +40,13 @@ interface ContextMenuState {
   rowId: string;
 }
 
-export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Props) {
+export function TerminalLayout({ project, layout, profiles, onLayoutChange, onPersistentLayoutChange }: Props) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [showProfileSubmenu, setShowProfileSubmenu] = useState<"vertical" | "horizontal" | null>(null);
   const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
   const [maximizedPaneId, setMaximizedPaneId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [renamingPaneId, setRenamingPaneId] = useState<string | null>(null);
 
   // dnd-kit sensors
   const sensors = useSensors(
@@ -335,6 +337,7 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
                 profiles={profiles}
                 layout={layout}
                 onLayoutChange={onLayoutChange}
+                onPersistentLayoutChange={onPersistentLayoutChange}
                 onContextMenu={handleContextMenu}
                 onPaneFocus={setFocusedPaneId}
                 focusedPaneId={focusedPaneId}
@@ -343,6 +346,8 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
                   setMaximizedPaneId((current) => (current === paneId ? null : paneId));
                 }}
                 onClosePane={closePaneById}
+                renamingPaneId={renamingPaneId}
+                onRenamingComplete={() => setRenamingPaneId(null)}
               />
               {/* Drop zone after each row */}
               {activeDragId && <RowDropZone id={`row-drop-${rowIndex + 1}`} />}
@@ -427,13 +432,7 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
               <button
                 className="w-full flex justify-between items-center px-3 py-2 bg-transparent border-none text-foreground text-xs cursor-pointer rounded text-left hover:bg-accent"
                 onClick={() => {
-                  const pane = layout.rows.flatMap(r => r.panes).find(p => p.id === contextMenu.paneId);
-                  const profile = profiles.find(p => p.id === pane?.profileId);
-                  const currentName = pane?.name || profile?.name || "";
-                  const newName = window.prompt("Rename pane:", currentName);
-                  if (newName !== null && newName.trim() !== "") {
-                    onLayoutChange(updatePaneName(layout, contextMenu.paneId, newName.trim()));
-                  }
+                  setRenamingPaneId(contextMenu.paneId);
                   closeContextMenu();
                 }}
                 onMouseEnter={() => setShowProfileSubmenu(null)}
@@ -483,12 +482,15 @@ interface RowProps {
   profiles: TerminalProfile[];
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
+  onPersistentLayoutChange?: (layout: Layout) => void;
   onContextMenu: (e: React.MouseEvent, paneId: string, rowId: string) => void;
   onPaneFocus: (paneId: string) => void;
   focusedPaneId: string | null;
   maximizedPaneId: string | null;
   onToggleMaximize: (paneId: string) => void;
   onClosePane: (paneId: string, rowId: string) => void;
+  renamingPaneId: string | null;
+  onRenamingComplete: () => void;
 }
 
 function RowWithResizer({
@@ -500,12 +502,15 @@ function RowWithResizer({
   profiles,
   layout,
   onLayoutChange,
+  onPersistentLayoutChange,
   onContextMenu,
   onPaneFocus,
   focusedPaneId,
   maximizedPaneId,
   onToggleMaximize,
   onClosePane,
+  renamingPaneId,
+  onRenamingComplete,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -575,13 +580,19 @@ function RowWithResizer({
               onLayoutChange={onLayoutChange}
               onContextMenu={(e) => onContextMenu(e, pane.id, row.id)}
               onFocus={() => onPaneFocus(pane.id)}
-              onRename={(name) => onLayoutChange(updatePaneName(layout, pane.id, name))}
+              onRename={(name) => {
+                const newLayout = updatePaneName(layout, pane.id, name);
+                onLayoutChange(newLayout);
+                onPersistentLayoutChange?.(newLayout);
+              }}
               isFocused={focusedPaneId === pane.id}
               isMaximized={maximizedPaneId === pane.id}
               isHidden={maximizedPaneId !== null && maximizedPaneId !== pane.id}
               onToggleMaximize={() => onToggleMaximize(pane.id)}
               onClosePane={() => onClosePane(pane.id, row.id)}
               canClose={totalPanes > 1}
+              triggerRename={renamingPaneId === pane.id}
+              onTriggerRenameComplete={onRenamingComplete}
             />
           );
         })}
@@ -619,6 +630,8 @@ interface PaneProps {
   onToggleMaximize: () => void;
   onClosePane: () => void;
   canClose: boolean;
+  triggerRename: boolean;
+  onTriggerRenameComplete: () => void;
 }
 
 function SortablePane({
@@ -641,6 +654,8 @@ function SortablePane({
   onToggleMaximize,
   onClosePane,
   canClose,
+  triggerRename,
+  onTriggerRenameComplete,
 }: PaneProps) {
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -749,6 +764,8 @@ function SortablePane({
             isFocused={isFocused}
             onClose={onClosePane}
             onRename={onRename}
+            triggerRename={triggerRename}
+            onTriggerRenameComplete={onTriggerRenameComplete}
             canClose={canClose}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
@@ -765,6 +782,8 @@ function SortablePane({
             onToggleMaximize={onToggleMaximize}
             onClose={onClosePane}
             onRename={onRename}
+            triggerRename={triggerRename}
+            onTriggerRenameComplete={onTriggerRenameComplete}
             canClose={canClose}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
