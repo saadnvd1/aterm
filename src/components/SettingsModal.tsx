@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, X, Download } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTheme } from "../context/ThemeContext";
 import { getThemeList } from "../lib/themes";
@@ -61,6 +62,11 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
   const [itermProfiles, setItermProfiles] = useState<ITermProfile[]>([]);
   const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
   const [importError, setImportError] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(console.error);
+  }, []);
 
   async function handleImportClick() {
     setImportError(null);
@@ -241,6 +247,14 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
                 Lines kept in terminal history. Higher values use more memory (~7MB per 10k lines per terminal).
               </p>
             </div>
+
+            {appVersion && (
+              <div className="pt-4 border-t border-border">
+                <p className="text-[11px] text-muted-foreground">
+                  aTerm v{appVersion}
+                </p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="profiles" className="flex-1 overflow-auto mt-4">
