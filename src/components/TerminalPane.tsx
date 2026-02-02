@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useTheme } from "../context/ThemeContext";
 import { PaneHeader } from "./PaneHeader";
 import "@xterm/xterm/css/xterm.css";
@@ -36,6 +37,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
   const onToggleMaximizeRef = useRef(onToggleMaximize);
   const onFocusRef = useRef(onFocus);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Keep the refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -169,6 +171,35 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
     }
   }, [fontSize, id]);
 
+  // Handle file drag and drop - only for focused pane
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const webview = getCurrentWebview();
+
+    const unlisten = webview.onDragDropEvent((event) => {
+      const { type } = event.payload;
+
+      if (type === "enter" || type === "over") {
+        setIsDragging(true);
+      } else if (type === "drop") {
+        setIsDragging(false);
+        if (event.payload.paths.length > 0) {
+          // Insert file paths into terminal (space-separated if multiple, quoted if contains spaces)
+          const paths = event.payload.paths.map((p) =>
+            p.includes(" ") ? `"${p}"` : p
+          ).join(" ");
+          invoke("write_pty", { id, data: paths }).catch(console.error);
+        }
+      } else if (type === "leave") {
+        setIsDragging(false);
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [id, isFocused]);
 
   // Handle keyboard shortcuts at container level (capture phase)
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -209,7 +240,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
 
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 bg-background rounded-lg border border-border overflow-hidden"
+      className={`flex flex-col flex-1 min-h-0 bg-background rounded-lg border overflow-hidden relative ${isDragging ? "border-primary border-2" : "border-border"}`}
       onClick={onFocus}
       onKeyDownCapture={handleKeyDown}
     >
@@ -224,6 +255,13 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
         dragHandleProps={dragHandleProps}
       />
       <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />
+      {isDragging && (
+        <div className="absolute inset-0 bg-primary/10 pointer-events-none flex items-center justify-center z-10">
+          <div className="bg-background/90 border border-primary rounded-lg px-4 py-3 text-center shadow-lg">
+            <p className="text-sm font-medium">Drop to insert path</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
