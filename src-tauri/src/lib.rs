@@ -882,6 +882,21 @@ fn kill_pty(id: String, state: tauri::State<'_, PtyMap>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn get_active_pty_count(state: tauri::State<'_, PtyMap>) -> usize {
+    let ptys = state.lock().unwrap();
+    ptys.len()
+}
+
+#[tauri::command]
+fn kill_all_ptys(state: tauri::State<'_, PtyMap>) -> Result<(), String> {
+    let mut ptys = state.lock().unwrap();
+    for (_, mut pty) in ptys.drain() {
+        let _ = pty.child.kill();
+    }
+    Ok(())
+}
+
 // ============================================================================
 // App Entry Point
 // ============================================================================
@@ -919,6 +934,8 @@ pub fn run() {
             write_pty,
             resize_pty,
             kill_pty,
+            get_active_pty_count,
+            kill_all_ptys,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -977,6 +994,14 @@ pub fn run() {
             });
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Prevent default close behavior
+                api.prevent_close();
+                // Emit event to frontend to show confirmation dialog
+                let _ = window.emit("exit-requested", ());
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

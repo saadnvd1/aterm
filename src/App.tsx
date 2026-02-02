@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
+import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 import type { Layout } from "./lib/layouts";
 import appIcon from "./assets/icon.png";
@@ -14,10 +17,38 @@ export default function App() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   // Runtime layouts track unsaved changes per project (keyed by project.id)
   const [runtimeLayouts, setRuntimeLayouts] = useState<Record<string, Layout>>({});
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [activePtyCount, setActivePtyCount] = useState(0);
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  // Listen for exit request from window close
+  useEffect(() => {
+    const unlisten = listen("exit-requested", async () => {
+      // Check how many active PTYs are running
+      const count = await invoke<number>("get_active_pty_count");
+      setActivePtyCount(count);
+      setShowExitDialog(true);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  async function handleExitConfirm() {
+    // Kill all PTYs first
+    await invoke("kill_all_ptys");
+    // Then close the window
+    const window = getCurrentWindow();
+    await window.destroy();
+  }
+
+  function handleExitCancel() {
+    setShowExitDialog(false);
+  }
 
   // Track when a project is selected for the first time and initialize its runtime layout
   useEffect(() => {
@@ -261,6 +292,12 @@ export default function App() {
 
   return (
     <div style={styles.container}>
+      <ExitConfirmDialog
+        isOpen={showExitDialog}
+        activePtyCount={activePtyCount}
+        onConfirm={handleExitConfirm}
+        onCancel={handleExitCancel}
+      />
       {sidebarVisible && (
         <ProjectSidebar
           config={config}
