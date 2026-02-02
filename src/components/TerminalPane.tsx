@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useTheme } from "../context/ThemeContext";
 import { PaneHeader } from "./PaneHeader";
 import "@xterm/xterm/css/xterm.css";
+
+// Base64 decode helper
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 
 interface Props {
   id: string;
@@ -62,6 +73,17 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
 
     terminal.open(containerRef.current);
 
+    // Try to load WebGL addon for GPU-accelerated rendering (2-3x faster)
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => {
+        webglAddon.dispose();
+      });
+      terminal.loadAddon(webglAddon);
+    } catch (e) {
+      console.warn("WebGL addon failed to load, using default renderer:", e);
+    }
+
     requestAnimationFrame(() => {
       fitAddon.fit();
     });
@@ -80,10 +102,39 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
     // TextDecoder handles streaming UTF-8 properly (keeps partial sequences for next chunk)
     const decoder = new TextDecoder("utf-8", { fatal: false });
 
-    const unlisten = listen<number[]>(`pty-output-${id}`, (event) => {
-      const bytes = new Uint8Array(event.payload);
-      const text = decoder.decode(bytes, { stream: true });
+    // Frame batching: accumulate writes and flush on animation frame
+    // This prevents render thrashing during fast output (e.g., cat large file)
+    let pendingData: Uint8Array[] = [];
+    let frameRequested = false;
+
+    const flushPendingData = () => {
+      if (pendingData.length === 0) return;
+
+      // Concatenate all pending chunks
+      const totalLength = pendingData.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combined = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of pendingData) {
+        combined.set(chunk, offset);
+        offset += chunk.length;
+      }
+      pendingData = [];
+      frameRequested = false;
+
+      const text = decoder.decode(combined, { stream: true });
       terminal.write(text);
+    };
+
+    const unlisten = listen<string>(`pty-output-${id}`, (event) => {
+      // Decode base64 to bytes
+      const bytes = base64ToUint8Array(event.payload);
+      pendingData.push(bytes);
+
+      // Request animation frame if not already requested
+      if (!frameRequested) {
+        frameRequested = true;
+        requestAnimationFrame(flushPendingData);
+      }
     });
 
     terminal.onData((data) => {
