@@ -19,8 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ChevronUp, Folder, GitBranch, Circle, Search } from "lucide-react";
-import { ProviderId, getProviderList } from "../lib/providers";
+import { ChevronUp, ChevronRight, Folder, GitBranch, Circle, Search } from "lucide-react";
+import { ProviderId, getProviderList, PROVIDERS } from "../lib/providers";
 import { createProject, ProjectConfig } from "../lib/config";
 import type { Layout } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
@@ -74,6 +74,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
   const [error, setError] = useState<string | null>(null);
   const [folderSearch, setFolderSearch] = useState("");
   const [pathInput, setPathInput] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [skipPermissions, setSkipPermissions] = useState(false);
 
   const providers = getProviderList();
 
@@ -156,7 +158,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
         currentPath,
         provider,
         gitRemote || undefined,
-        layoutId
+        layoutId,
+        skipPermissions
       );
 
       onProjectAdded(project);
@@ -184,7 +187,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
 
       await invoke("clone_repo", { url: cloneUrl, destination });
 
-      const project = createProject(repoName, destination, provider, cloneUrl, layoutId);
+      const project = createProject(repoName, destination, provider, cloneUrl, layoutId, skipPermissions);
 
       onProjectAdded(project);
       onClose();
@@ -205,6 +208,8 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
     setMode("browse");
     setFolderSearch("");
     setPathInput("");
+    setAdvancedOpen(false);
+    setSkipPermissions(false);
   }
 
   return (
@@ -349,6 +354,41 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
                     )}
                   </div>
                 </div>
+
+                {/* Advanced Settings */}
+                <div className="border border-border rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOpen(!advancedOpen)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ChevronRight
+                      className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-90")}
+                    />
+                    Advanced Settings
+                  </button>
+                  {advancedOpen && (
+                    <div className="border-t border-border px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="skipPermissions-browse"
+                          checked={skipPermissions}
+                          onChange={(e) => setSkipPermissions(e.target.checked)}
+                          className="h-4 w-4 rounded border-border bg-background accent-primary"
+                        />
+                        <label htmlFor="skipPermissions-browse" className="cursor-pointer text-sm">
+                          Auto-approve tool calls
+                          <span className="ml-1 text-muted-foreground">
+                            {PROVIDERS[provider].autoApproveFlag
+                              ? `(${PROVIDERS[provider].autoApproveFlag})`
+                              : "(not supported)"}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
             </div>
           </TabsContent>
 
@@ -431,6 +471,41 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
                     />
                   )}
                 </div>
+              </div>
+
+              {/* Advanced Settings */}
+              <div className="border border-border rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronRight
+                    className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-90")}
+                  />
+                  Advanced Settings
+                </button>
+                {advancedOpen && (
+                  <div className="border-t border-border px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="skipPermissions-clone"
+                        checked={skipPermissions}
+                        onChange={(e) => setSkipPermissions(e.target.checked)}
+                        className="h-4 w-4 rounded border-border bg-background accent-primary"
+                      />
+                      <label htmlFor="skipPermissions-clone" className="cursor-pointer text-sm">
+                        Auto-approve tool calls
+                        <span className="ml-1 text-muted-foreground">
+                          {PROVIDERS[provider].autoApproveFlag
+                            ? `(${PROVIDERS[provider].autoApproveFlag})`
+                            : "(not supported)"}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>

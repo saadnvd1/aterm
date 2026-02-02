@@ -24,6 +24,27 @@ import { GitPane } from "./git/GitPane";
 import type { ProjectConfig } from "../lib/config";
 import { updatePaneName, type Layout, type LayoutRow, type LayoutPane } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
+import { PROVIDERS } from "../lib/providers";
+
+// Build command with auto-approve flag if skipPermissions is enabled
+function buildCommand(
+  profileCommand: string | undefined,
+  skipPermissions: boolean | undefined
+): string | undefined {
+  if (!profileCommand || !skipPermissions) return profileCommand;
+
+  // Check if the command matches a provider CLI
+  const provider = Object.values(PROVIDERS).find(
+    (p) => p.cli && profileCommand.startsWith(p.cli)
+  );
+
+  if (provider?.autoApproveFlag) {
+    // Append the auto-approve flag to the command
+    return `${profileCommand} ${provider.autoApproveFlag}`;
+  }
+
+  return profileCommand;
+}
 
 interface Props {
   project: ProjectConfig;
@@ -774,7 +795,7 @@ function SortablePane({
             id={`${project.id}-${paneId}`}
             title={paneName || profile.name}
             cwd={project.path}
-            command={profile.command}
+            command={buildCommand(profile.command, project.skipPermissions)}
             accentColor={profile.color}
             onFocus={onFocus}
             isFocused={isFocused}

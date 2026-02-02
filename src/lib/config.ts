@@ -9,6 +9,7 @@ export interface ProjectConfig {
   gitRemote?: string;
   provider: ProviderId;
   layoutId: string;
+  skipPermissions?: boolean;
   createdAt: string;
 }
 
@@ -35,7 +36,8 @@ export function createProject(
   path: string,
   provider: ProviderId = "claude",
   gitRemote?: string,
-  layoutId: string = "ai-shell"
+  layoutId: string = "ai-shell",
+  skipPermissions: boolean = false
 ): ProjectConfig {
   return {
     id: crypto.randomUUID(),
@@ -44,6 +46,7 @@ export function createProject(
     gitRemote,
     provider,
     layoutId,
+    skipPermissions,
     createdAt: new Date().toISOString(),
   };
 }
