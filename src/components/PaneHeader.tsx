@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -9,6 +10,7 @@ interface Props {
   isFocused?: boolean;
   canClose?: boolean;
   onClose?: () => void;
+  onRename?: (name: string) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   titleExtra?: React.ReactNode;
   actions?: React.ReactNode;
@@ -21,10 +23,48 @@ export function PaneHeader({
   isFocused,
   canClose,
   onClose,
+  onRename,
   dragHandleProps,
   titleExtra,
   actions,
 }: Props) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  function handleDoubleClick(e: React.MouseEvent) {
+    if (onRename) {
+      e.stopPropagation();
+      setEditValue(title);
+      setIsEditing(true);
+    }
+  }
+
+  function handleBlur() {
+    setIsEditing(false);
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title) {
+      onRename?.(trimmed);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleBlur();
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setEditValue(title);
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -40,7 +80,25 @@ export function PaneHeader({
             style={{ backgroundColor: accentColor }}
           />
         )}
-        <span className="text-xs font-medium text-foreground">{title}</span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="text-xs font-medium text-foreground bg-background border border-border rounded px-1 py-0.5 outline-none focus:border-primary w-32"
+          />
+        ) : (
+          <span
+            className="text-xs font-medium text-foreground"
+            onDoubleClick={handleDoubleClick}
+            title={onRename ? "Double-click to rename" : undefined}
+          >
+            {title}
+          </span>
+        )}
         {titleExtra}
       </div>
       <div className="flex items-center gap-2">

@@ -4,6 +4,7 @@ export interface LayoutPane {
   id: string;
   profileId: string;
   flex: number; // Flex grow value for sizing
+  name?: string; // Optional custom name (overrides profile name)
 }
 
 export interface LayoutRow {
@@ -223,5 +224,21 @@ export function updateRowFlex(
     rows: layout.rows.map((row) =>
       row.id === rowId ? { ...row, flex } : row
     ),
+  };
+}
+
+export function updatePaneName(
+  layout: Layout,
+  paneId: string,
+  name: string | undefined
+): Layout {
+  return {
+    ...layout,
+    rows: layout.rows.map((row) => ({
+      ...row,
+      panes: row.panes.map((p) =>
+        p.id === paneId ? { ...p, name: name || undefined } : p
+      ),
+    })),
   };
 }

@@ -21,7 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { TerminalPane } from "./TerminalPane";
 import { GitPane } from "./git/GitPane";
 import type { ProjectConfig } from "../lib/config";
-import type { Layout, LayoutRow, LayoutPane } from "../lib/layouts";
+import { updatePaneName, type Layout, type LayoutRow, type LayoutPane } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
 
 interface Props {
@@ -382,6 +382,24 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
                 )}
               </div>
 
+              <div className="h-px bg-border my-1" />
+              <button
+                className="w-full flex justify-between items-center px-3 py-2 bg-transparent border-none text-foreground text-xs cursor-pointer rounded text-left hover:bg-accent"
+                onClick={() => {
+                  const pane = layout.rows.flatMap(r => r.panes).find(p => p.id === contextMenu.paneId);
+                  const profile = profiles.find(p => p.id === pane?.profileId);
+                  const currentName = pane?.name || profile?.name || "";
+                  const newName = window.prompt("Rename pane:", currentName);
+                  if (newName !== null && newName.trim() !== "") {
+                    onLayoutChange(updatePaneName(layout, contextMenu.paneId, newName.trim()));
+                  }
+                  closeContextMenu();
+                }}
+                onMouseEnter={() => setShowProfileSubmenu(null)}
+              >
+                Rename
+              </button>
+
               {totalPanes > 1 && (
                 <>
                   <div className="h-px bg-border my-1" />
@@ -507,6 +525,7 @@ function RowWithResizer({
               paneId={pane.id}
               paneIndex={paneIndex}
               flex={pane.flex}
+              paneName={pane.name}
               isLast={isLast}
               project={project}
               profile={profile}
@@ -515,6 +534,7 @@ function RowWithResizer({
               onLayoutChange={onLayoutChange}
               onContextMenu={(e) => onContextMenu(e, pane.id, row.id)}
               onFocus={() => onPaneFocus(pane.id)}
+              onRename={(name) => onLayoutChange(updatePaneName(layout, pane.id, name))}
               isFocused={focusedPaneId === pane.id}
               isMaximized={maximizedPaneId === pane.id}
               isHidden={maximizedPaneId !== null && maximizedPaneId !== pane.id}
@@ -542,6 +562,7 @@ interface PaneProps {
   paneId: string;
   paneIndex: number;
   flex: number;
+  paneName: string | undefined;
   isLast: boolean;
   project: ProjectConfig;
   profile: TerminalProfile | undefined;
@@ -550,6 +571,7 @@ interface PaneProps {
   onLayoutChange: (layout: Layout) => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onFocus: () => void;
+  onRename: (name: string) => void;
   isFocused: boolean;
   isMaximized: boolean;
   isHidden: boolean;
@@ -562,6 +584,7 @@ function SortablePane({
   paneId,
   paneIndex,
   flex,
+  paneName,
   isLast,
   project,
   profile,
@@ -570,6 +593,7 @@ function SortablePane({
   onLayoutChange,
   onContextMenu,
   onFocus,
+  onRename,
   isFocused,
   isMaximized,
   isHidden,
@@ -677,18 +701,20 @@ function SortablePane({
         {profile.type === "git" ? (
           <GitPane
             id={`${project.id}-${paneId}`}
+            title={paneName || profile.name}
             cwd={project.path}
             accentColor={profile.color}
             onFocus={onFocus}
             isFocused={isFocused}
             onClose={onClosePane}
+            onRename={onRename}
             canClose={canClose}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
         ) : (
           <TerminalPane
             id={`${project.id}-${paneId}`}
-            title={profile.name}
+            title={paneName || profile.name}
             cwd={project.path}
             command={profile.command}
             accentColor={profile.color}
@@ -697,6 +723,7 @@ function SortablePane({
             isMaximized={isMaximized}
             onToggleMaximize={onToggleMaximize}
             onClose={onClosePane}
+            onRename={onRename}
             canClose={canClose}
             dragHandleProps={{ ...attributes, ...listeners }}
           />

@@ -14,18 +14,20 @@ import { CommitHistory } from "./CommitHistory";
 
 interface Props {
   id: string;
+  title: string;
   cwd: string;
   accentColor?: string;
   onFocus?: () => void;
   isFocused?: boolean;
   onClose?: () => void;
+  onRename?: (name: string) => void;
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 const POLL_INTERVAL = 5000;
 
-export function GitPane({ cwd, accentColor, onFocus, isFocused, onClose, canClose, dragHandleProps }: Props) {
+export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, onRename, canClose, dragHandleProps }: Props) {
   const [activeTab, setActiveTab] = useState<GitTab>("changes");
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
@@ -241,11 +243,12 @@ export function GitPane({ cwd, accentColor, onFocus, isFocused, onClose, canClos
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background rounded-lg border border-border overflow-hidden" onClick={onFocus}>
       <PaneHeader
-        title="Git"
+        title={title}
         accentColor={accentColor}
         isFocused={isFocused}
         canClose={canClose}
         onClose={onClose}
+        onRename={onRename}
         dragHandleProps={dragHandleProps}
         titleExtra={branchDisplay}
         actions={refreshButton}

@@ -691,6 +691,7 @@ fn get_git_remote(path: String) -> Result<Option<String>, String> {
 type PtyMap = Arc<Mutex<HashMap<String, PtyHandle>>>;
 
 struct PtyHandle {
+    master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     child: Box<dyn portable_pty::Child + Send>,
 }
@@ -736,7 +737,7 @@ fn spawn_pty(
 
     {
         let mut ptys = state.lock().unwrap();
-        ptys.insert(id.clone(), PtyHandle { writer, child });
+        ptys.insert(id.clone(), PtyHandle { master: pair.master, writer, child });
     }
 
     let event_id = id.clone();
@@ -776,7 +777,17 @@ fn resize_pty(
     rows: u16,
     state: tauri::State<'_, PtyMap>,
 ) -> Result<(), String> {
-    let _ = (id, cols, rows, state);
+    let ptys = state.lock().unwrap();
+    if let Some(pty) = ptys.get(&id) {
+        pty.master
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
