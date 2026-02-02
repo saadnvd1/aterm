@@ -90,17 +90,52 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
       invoke("write_pty", { id, data }).catch(console.error);
     });
 
-    // Intercept Shift+Cmd+Enter for maximize toggle
+    // Custom key event handler for special key combinations
     terminal.attachCustomKeyEventHandler((e) => {
-      // Check for Shift+Cmd+Enter (keyCode 13 is Enter)
+      if (e.type !== "keydown") return true;
+
+      // Shift+Cmd+Enter: Toggle maximize
       if (e.shiftKey && e.metaKey && (e.key === "Enter" || e.keyCode === 13)) {
-        if (e.type === "keydown") {
-          e.preventDefault();
-          e.stopPropagation();
-          onToggleMaximizeRef.current?.();
-        }
-        return false; // Prevent terminal from processing this key
+        e.preventDefault();
+        e.stopPropagation();
+        onToggleMaximizeRef.current?.();
+        return false;
       }
+
+      // Shift+Enter: Send literal newline for multi-line input (e.g., Claude Code)
+      if (e.shiftKey && !e.metaKey && !e.ctrlKey && e.key === "Enter") {
+        invoke("write_pty", { id, data: "\n" }).catch(console.error);
+        return false;
+      }
+
+      // Cmd+Left: Go to beginning of line (sends Ctrl+A)
+      if (e.metaKey && !e.shiftKey && e.key === "ArrowLeft") {
+        e.preventDefault();
+        invoke("write_pty", { id, data: "\x01" }).catch(console.error);
+        return false;
+      }
+
+      // Cmd+Right: Go to end of line (sends Ctrl+E)
+      if (e.metaKey && !e.shiftKey && e.key === "ArrowRight") {
+        e.preventDefault();
+        invoke("write_pty", { id, data: "\x05" }).catch(console.error);
+        return false;
+      }
+
+      // Option+Left: Move back one word (sends Escape+b)
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.key === "ArrowLeft") {
+        e.preventDefault();
+        invoke("write_pty", { id, data: "\x1bb" }).catch(console.error);
+        return false;
+      }
+
+      // Option+Right: Move forward one word (sends Escape+f)
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.key === "ArrowRight") {
+        e.preventDefault();
+        invoke("write_pty", { id, data: "\x1bf" }).catch(console.error);
+        return false;
+      }
+
       return true; // Let terminal handle all other keys
     });
 
