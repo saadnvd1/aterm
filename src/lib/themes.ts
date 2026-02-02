@@ -315,7 +315,7 @@ export const themes: Record<string, Theme> = {
   },
 };
 
-export const DEFAULT_THEME = "midnight";
+export const DEFAULT_THEME = "dracula";
 
 export function getTheme(themeId: string): Theme {
   return themes[themeId] || themes[DEFAULT_THEME];

@@ -4,6 +4,7 @@ import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
 import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 import type { Layout } from "./lib/layouts";
+import appIcon from "./assets/icon.png";
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
@@ -189,7 +190,7 @@ export default function App() {
         ) : (
           <div style={styles.empty}>
             <div style={styles.emptyContent}>
-              <div style={styles.emptyIcon}>⚡</div>
+              <img src={appIcon} alt="aTerm" style={styles.emptyIcon} />
               <h2 style={styles.emptyTitle}>Welcome to aTerm</h2>
               <p style={styles.emptyText}>
                 Add a project to start your AI-powered terminal workspace
@@ -247,8 +248,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "40px",
   },
   emptyIcon: {
-    fontSize: "40px",
+    width: "80px",
+    height: "80px",
     marginBottom: "16px",
+    borderRadius: "16px",
   },
   emptyTitle: {
     fontSize: "18px",
