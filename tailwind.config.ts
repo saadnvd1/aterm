@@ -48,7 +48,9 @@ const config: Config = {
       zIndex: {
         dropdown: "200",
         popover: "300",
+        "popover-nested": "400", // Nested popovers (selects inside popovers)
         modal: "500",
+        "modal-nested": "600", // Nested modals, selects inside modals
         toast: "700",
         tooltip: "800",
       },
