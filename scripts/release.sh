@@ -66,40 +66,34 @@ echo -e "${GREEN}Built: ${DMG_PATH}${NC}"
 # Generate changelog from commits since last release
 echo -e "${YELLOW}Generating changelog...${NC}"
 LAST_VERSION_COMMIT=$(git log --oneline --grep="bump version to" | head -2 | tail -1 | cut -d' ' -f1)
+CHANGELOG=""
 if [ -n "$LAST_VERSION_COMMIT" ]; then
-    CHANGELOG=$(git log ${LAST_VERSION_COMMIT}..HEAD --oneline --no-merges | grep -v "chore: bump version" | while read line; do
-        HASH=$(echo "$line" | cut -d' ' -f1)
+    while IFS= read -r line; do
         MSG=$(echo "$line" | cut -d' ' -f2-)
-        # Categorize by conventional commit prefix
         if [[ "$MSG" == feat:* ]]; then
-            echo "- ${MSG#feat: }"
+            CHANGELOG="${CHANGELOG}- ${MSG#feat: }"$'\n'
         elif [[ "$MSG" == fix:* ]]; then
-            echo "- ${MSG#fix: }"
-        elif [[ "$MSG" == docs:* ]] || [[ "$MSG" == chore:* ]]; then
-            : # skip docs and chore
-        else
-            echo "- $MSG"
+            CHANGELOG="${CHANGELOG}- ${MSG#fix: }"$'\n'
+        elif [[ "$MSG" != docs:* ]] && [[ "$MSG" != chore:* ]]; then
+            CHANGELOG="${CHANGELOG}- ${MSG}"$'\n'
         fi
-    done)
-else
-    CHANGELOG="- Initial release"
+    done < <(git log ${LAST_VERSION_COMMIT}..HEAD --oneline --no-merges | grep -v "chore: bump version")
 fi
+[ -z "$CHANGELOG" ] && CHANGELOG="- Initial release"
 
 # Create release
 echo -e "${YELLOW}Creating GitHub release...${NC}"
+NOTES="## What's Changed
+
+${CHANGELOG}
+### Download
+- **macOS (Apple Silicon)**: $(basename "$DMG_PATH")
+
+Signed and notarized for macOS."
+
 gh release create "v${VERSION}" \
     --title "aTerm v${VERSION}" \
-    --notes "$(cat <<EOF
-## What's Changed
-
-$CHANGELOG
-
-### Download
-- **macOS (Apple Silicon)**: \`$(basename "$DMG_PATH")\`
-
-Signed and notarized for macOS.
-EOF
-)" \
+    --notes "$NOTES" \
     "$DMG_PATH"
 
 echo -e "${GREEN}Released: https://github.com/saadnvd1/aterm/releases/tag/v${VERSION}${NC}"
