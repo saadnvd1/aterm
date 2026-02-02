@@ -262,6 +262,13 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
     }
   }, [fontSize, id]);
 
+  // Sync to default font size when it changes (only if no per-pane override)
+  useEffect(() => {
+    if (savedFontSize === undefined) {
+      setFontSize(defaultFontSize);
+    }
+  }, [defaultFontSize, savedFontSize]);
+
   // Handle file drag and drop - only for focused pane
   useEffect(() => {
     if (!isFocused) return;
