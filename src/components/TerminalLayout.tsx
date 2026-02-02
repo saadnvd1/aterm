@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -322,10 +322,10 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
       <SortableContext items={allPaneIds} strategy={rectSortingStrategy}>
         <div className="flex flex-col flex-1 gap-0 p-1.5 bg-background min-h-0">
           {/* Drop zone at top */}
-          <RowDropZone id="row-drop-0" isActive={!!activeDragId} />
+          {activeDragId && <RowDropZone id="row-drop-0" />}
 
           {layout.rows.map((row, rowIndex) => (
-            <div key={row.id}>
+            <React.Fragment key={row.id}>
               <RowWithResizer
                 row={row}
                 rowIndex={rowIndex}
@@ -345,8 +345,8 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange }: Pr
                 onClosePane={closePaneById}
               />
               {/* Drop zone after each row */}
-              <RowDropZone id={`row-drop-${rowIndex + 1}`} isActive={!!activeDragId} />
-            </div>
+              {activeDragId && <RowDropZone id={`row-drop-${rowIndex + 1}`} />}
+            </React.Fragment>
           ))}
 
         {contextMenu && (
@@ -797,13 +797,10 @@ function SortablePane({
 
 interface RowDropZoneProps {
   id: string;
-  isActive: boolean;
 }
 
-function RowDropZone({ id, isActive }: RowDropZoneProps) {
+function RowDropZone({ id }: RowDropZoneProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
-
-  if (!isActive) return null;
 
   return (
     <div
