@@ -16,7 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Download } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTheme } from "../context/ThemeContext";
 import { getThemeList } from "../lib/themes";
 import type { AppConfig } from "../lib/config";
@@ -30,11 +32,78 @@ interface Props {
   onConfigChange: (config: AppConfig) => void;
 }
 
+interface ITermProfile {
+  name: string;
+  guid: string;
+  command: string | null;
+  workingDirectory: string | null;
+}
+
+// Generate a color from a string (deterministic hash)
+function stringToColor(str: string): string {
+  const colors = [
+    "#7c5cff", "#00d4aa", "#ff6b6b", "#4ecdc4", "#ffe66d",
+    "#f97316", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16",
+  ];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props) {
   const { themeId, setThemeId } = useTheme();
   const themes = getThemeList();
   const [editingProfile, setEditingProfile] = useState<TerminalProfile | null>(null);
   const [editingLayout, setEditingLayout] = useState<Layout | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [itermProfiles, setItermProfiles] = useState<ITermProfile[]>([]);
+  const [selectedImports, setSelectedImports] = useState<Set<string>>(new Set());
+  const [importError, setImportError] = useState<string | null>(null);
+
+  async function handleImportClick() {
+    setImportError(null);
+    try {
+      const profiles = await invoke<ITermProfile[]>("get_iterm_profiles");
+      setItermProfiles(profiles);
+      setSelectedImports(new Set(profiles.map(p => p.guid)));
+      setShowImportModal(true);
+    } catch (e) {
+      setImportError(e as string);
+    }
+  }
+
+  function handleImportConfirm() {
+    const newProfiles: TerminalProfile[] = itermProfiles
+      .filter(p => selectedImports.has(p.guid))
+      .map(p => ({
+        id: `iterm-${p.guid}`,
+        name: p.name,
+        command: p.command || undefined,
+        color: stringToColor(p.guid),
+      }));
+
+    // Merge with existing, avoiding duplicates by id
+    const existingIds = new Set(config.profiles.map(p => p.id));
+    const toAdd = newProfiles.filter(p => !existingIds.has(p.id));
+
+    if (toAdd.length > 0) {
+      onConfigChange({ ...config, profiles: [...config.profiles, ...toAdd] });
+    }
+
+    setShowImportModal(false);
+  }
+
+  function toggleImport(guid: string) {
+    const newSet = new Set(selectedImports);
+    if (newSet.has(guid)) {
+      newSet.delete(guid);
+    } else {
+      newSet.add(guid);
+    }
+    setSelectedImports(newSet);
+  }
 
   function handleProfileSave(profile: TerminalProfile) {
     const exists = config.profiles.some((p) => p.id === profile.id);
@@ -129,22 +198,39 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
                 <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   Terminal Profiles
                 </h3>
-                <Button
-                  size="sm"
-                  className="h-6 text-[11px]"
-                  onClick={() =>
-                    setEditingProfile({
-                      id: crypto.randomUUID(),
-                      name: "",
-                      command: "",
-                      color: "#888888",
-                    })
-                  }
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  New
-                </Button>
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px]"
+                    onClick={handleImportClick}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Import iTerm2
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-6 text-[11px]"
+                    onClick={() =>
+                      setEditingProfile({
+                        id: crypto.randomUUID(),
+                        name: "",
+                        command: "",
+                        color: "#888888",
+                      })
+                    }
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
+                  </Button>
+                </div>
               </div>
+
+              {importError && (
+                <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive">
+                  {importError}
+                </div>
+              )}
 
               {editingProfile ? (
                 <ProfileEditor
@@ -279,6 +365,82 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* iTerm2 Import Modal */}
+      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+        <DialogContent className="max-w-[400px] max-h-[70vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import iTerm2 Profiles</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto">
+            <p className="text-xs text-muted-foreground mb-3">
+              Select profiles to import ({selectedImports.size} of {itermProfiles.length} selected)
+            </p>
+
+            <div className="flex flex-col gap-1.5">
+              {itermProfiles.map((profile) => (
+                <label
+                  key={profile.guid}
+                  className="flex items-center gap-2.5 px-3 py-2 bg-muted rounded-md border border-border cursor-pointer hover:border-muted-foreground/30"
+                >
+                  <Checkbox
+                    checked={selectedImports.has(profile.guid)}
+                    onCheckedChange={() => toggleImport(profile.guid)}
+                  />
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: stringToColor(profile.guid) }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-foreground truncate">
+                      {profile.name}
+                    </div>
+                    {profile.command && (
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {profile.command}
+                      </div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-3 border-t border-border">
+            <div className="flex gap-2">
+              <Button
+                variant="link"
+                size="sm"
+                className="h-6 px-0 text-[11px]"
+                onClick={() => setSelectedImports(new Set(itermProfiles.map(p => p.guid)))}
+              >
+                Select all
+              </Button>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-6 px-0 text-[11px]"
+                onClick={() => setSelectedImports(new Set())}
+              >
+                Select none
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowImportModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleImportConfirm}
+                disabled={selectedImports.size === 0}
+              >
+                Import {selectedImports.size}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
