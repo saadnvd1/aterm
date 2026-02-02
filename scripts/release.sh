@@ -37,57 +37,14 @@ for var in APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
     fi
 done
 
-# Build the app (just compile, don't rely on Tauri's bundler for DMG)
+# Clean old bundle to ensure fresh build
+rm -rf src-tauri/target/release/bundle
+
+# Build the app with Tauri (embeds frontend and creates bundle)
 echo -e "${YELLOW}Building app...${NC}"
-npm run build
-cd src-tauri
-cargo build --release
-cd ..
+npm run tauri build
 
 APP_PATH="src-tauri/target/release/bundle/macos/aTerm.app"
-
-# If Tauri didn't create the .app bundle, create it manually
-if [ ! -d "$APP_PATH" ]; then
-    echo -e "${YELLOW}Creating app bundle manually...${NC}"
-    mkdir -p "$APP_PATH/Contents/MacOS"
-    mkdir -p "$APP_PATH/Contents/Resources"
-
-    # Copy binary
-    cp src-tauri/target/release/app "$APP_PATH/Contents/MacOS/aTerm"
-
-    # Copy icons if they exist
-    if [ -f "src-tauri/icons/icon.icns" ]; then
-        cp "src-tauri/icons/icon.icns" "$APP_PATH/Contents/Resources/"
-    fi
-
-    # Create Info.plist
-    cat > "$APP_PATH/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>aTerm</string>
-    <key>CFBundleIconFile</key>
-    <string>icon.icns</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.saadnvd.aterm</string>
-    <key>CFBundleName</key>
-    <string>aTerm</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${VERSION}</string>
-    <key>CFBundleVersion</key>
-    <string>${VERSION}</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-</dict>
-</plist>
-EOF
-fi
 
 if [ ! -d "$APP_PATH" ]; then
     echo -e "${RED}Build failed - no .app bundle found${NC}"
