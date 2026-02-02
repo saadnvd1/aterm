@@ -722,11 +722,11 @@ fn spawn_pty(
     let mut cmd = if let Some(ref command) = command {
         // Run command, then exec a new shell when it exits
         let mut c = CommandBuilder::new(&shell);
-        c.args(["-i", "-c", &format!("{}; exec {}", command, shell)]);
+        c.args(["-l", "-i", "-c", &format!("{}; exec {} -l -i", command, shell)]);
         c
     } else {
         let mut c = CommandBuilder::new(&shell);
-        c.arg("-i");
+        c.args(["-l", "-i"]);
         c
     };
     cmd.cwd(&cwd);
