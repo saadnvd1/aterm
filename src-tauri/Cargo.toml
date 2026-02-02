@@ -24,6 +24,8 @@ log = "0.4"
 tauri = { version = "2.9.5", features = ["devtools"] }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 portable-pty = "0.8"
 tokio = { version = "1", features = ["full"] }
 dirs = "5.0"

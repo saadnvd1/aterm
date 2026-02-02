@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +31,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { TerminalPane, killPty } from "./TerminalPane";
+import { TerminalPane, killPty, serializeRefs } from "./TerminalPane";
 import { GitPane } from "./git/GitPane";
 import type { ProjectConfig } from "../lib/config";
 import { updatePaneName, type Layout, type LayoutRow, type LayoutPane } from "../lib/layouts";
@@ -897,6 +899,24 @@ function SortablePane({
           </ContextMenuSub>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onStartRename}>Rename</ContextMenuItem>
+          {profile?.type !== "git" && (
+            <ContextMenuItem onClick={async () => {
+              const serializeFn = serializeRefs.get(`${project.id}-${paneId}`);
+              if (!serializeFn) return;
+
+              const output = serializeFn();
+              const filePath = await save({
+                defaultPath: `terminal-output-${new Date().toISOString().slice(0, 10)}.txt`,
+                filters: [{ name: "Text Files", extensions: ["txt"] }],
+              });
+
+              if (filePath) {
+                await writeTextFile(filePath, output);
+              }
+            }}>
+              Save Output
+            </ContextMenuItem>
+          )}
           {canClose && (
             <>
               <ContextMenuSeparator />

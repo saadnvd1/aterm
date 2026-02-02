@@ -3,12 +3,17 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { SearchAddon } from "@xterm/addon-search";
+import { ClipboardAddon } from "@xterm/addon-clipboard";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-shell";
 import { useTheme } from "../context/ThemeContext";
 import { PaneHeader } from "./PaneHeader";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 import "@xterm/xterm/css/xterm.css";
 
 // Base64 decode helper
@@ -52,7 +57,11 @@ interface Props {
   onTriggerRenameComplete?: () => void;
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  onSerialize?: () => string;
 }
+
+// Expose serialize function ref for external use (context menu)
+export const serializeRefs = new Map<string, () => string>();
 
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 32;
@@ -64,11 +73,18 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
+  const serializeAddonRef = useRef<SerializeAddon | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const onToggleMaximizeRef = useRef(onToggleMaximize);
   const onFocusRef = useRef(onFocus);
   // Use saved font size if available, otherwise use default
   const [fontSize, setFontSize] = useState(savedFontSize ?? defaultFontSize);
   const [isDragging, setIsDragging] = useState(false);
+  // Search state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState({ current: 0, total: 0 });
 
   // Keep the refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -112,6 +128,23 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
       }
     });
     terminal.loadAddon(webLinksAddon);
+
+    // Search addon for Cmd+F search functionality
+    const searchAddon = new SearchAddon();
+    terminal.loadAddon(searchAddon);
+    searchAddonRef.current = searchAddon;
+
+    // Clipboard addon for OSC 52 remote clipboard support
+    const clipboardAddon = new ClipboardAddon();
+    terminal.loadAddon(clipboardAddon);
+
+    // Serialize addon for exporting terminal output
+    const serializeAddon = new SerializeAddon();
+    terminal.loadAddon(serializeAddon);
+    serializeAddonRef.current = serializeAddon;
+
+    // Register serialize function for external access (context menu)
+    serializeRefs.set(id, () => serializeAddon.serialize());
 
     requestAnimationFrame(() => {
       fitAddon.fit();
@@ -248,6 +281,8 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
       unlisten.then((fn) => fn());
       terminal.element?.removeEventListener("click", handleTerminalClick);
       resizeObserver.disconnect();
+      // Clean up serialize ref
+      serializeRefs.delete(id);
       // Don't kill PTY on unmount - it survives drag/drop remounts
       // PTY is killed via killPty() when pane is explicitly closed
       terminal.dispose();
@@ -330,8 +365,144 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
     };
   }, [id, isFocused]);
 
+  // Search functions
+  function openSearch() {
+    setIsSearchOpen(true);
+    setSearchResults({ current: 0, total: 0 });
+    // Focus input after state update
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }
+
+  function closeSearch() {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults({ current: 0, total: 0 });
+    searchAddonRef.current?.clearDecorations();
+    // Return focus to terminal
+    terminalRef.current?.focus();
+  }
+
+  function findNext() {
+    if (!searchAddonRef.current || !searchQuery) return;
+    const found = searchAddonRef.current.findNext(searchQuery, {
+      regex: false,
+      caseSensitive: false,
+      decorations: {
+        matchBackground: "#facc15",
+        matchBorder: "#facc15",
+        matchOverviewRuler: "#facc15",
+        activeMatchBackground: "#f97316",
+        activeMatchBorder: "#f97316",
+        activeMatchColorOverviewRuler: "#f97316",
+      },
+    });
+    if (found) {
+      setSearchResults((prev) => ({
+        current: prev.total > 0 ? (prev.current % prev.total) + 1 : 1,
+        total: prev.total || 1,
+      }));
+    }
+  }
+
+  function findPrevious() {
+    if (!searchAddonRef.current || !searchQuery) return;
+    const found = searchAddonRef.current.findPrevious(searchQuery, {
+      regex: false,
+      caseSensitive: false,
+      decorations: {
+        matchBackground: "#facc15",
+        matchBorder: "#facc15",
+        matchOverviewRuler: "#facc15",
+        activeMatchBackground: "#f97316",
+        activeMatchBorder: "#f97316",
+        activeMatchColorOverviewRuler: "#f97316",
+      },
+    });
+    if (found) {
+      setSearchResults((prev) => ({
+        current: prev.current > 1 ? prev.current - 1 : prev.total || 1,
+        total: prev.total || 1,
+      }));
+    }
+  }
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+    if (!value) {
+      searchAddonRef.current?.clearDecorations();
+      setSearchResults({ current: 0, total: 0 });
+      return;
+    }
+    // Perform initial search to highlight matches
+    if (searchAddonRef.current) {
+      const found = searchAddonRef.current.findNext(value, {
+        regex: false,
+        caseSensitive: false,
+        decorations: {
+          matchBackground: "#facc15",
+          matchBorder: "#facc15",
+          matchOverviewRuler: "#facc15",
+          activeMatchBackground: "#f97316",
+          activeMatchBorder: "#f97316",
+          activeMatchColorOverviewRuler: "#f97316",
+        },
+      });
+      setSearchResults({ current: found ? 1 : 0, total: found ? 1 : 0 });
+    }
+  }
+
+  function handleSearchKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeSearch();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        findPrevious();
+      } else {
+        findNext();
+      }
+    }
+  }
+
   // Handle keyboard shortcuts at container level (capture phase)
   function handleKeyDown(e: React.KeyboardEvent) {
+    // Cmd+F: Open search
+    if (e.metaKey && e.key === "f") {
+      e.preventDefault();
+      e.stopPropagation();
+      openSearch();
+      return;
+    }
+
+    // Cmd+G: Find next (standard macOS)
+    if (e.metaKey && !e.shiftKey && e.key === "g") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isSearchOpen) {
+        findNext();
+      }
+      return;
+    }
+
+    // Cmd+Shift+G: Find previous (standard macOS)
+    if (e.metaKey && e.shiftKey && e.key === "g") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isSearchOpen) {
+        findPrevious();
+      }
+      return;
+    }
+
+    // Escape: Close search
+    if (e.key === "Escape" && isSearchOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeSearch();
+      return;
+    }
+
     // Shift+Cmd+Enter: Toggle maximize
     if (e.shiftKey && e.metaKey && e.key === "Enter") {
       e.preventDefault();
@@ -394,6 +565,50 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
         dragHandleProps={dragHandleProps}
       />
       <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />
+      {/* Search overlay */}
+      {isSearchOpen && (
+        <div className="absolute top-10 right-2 z-20 flex items-center gap-1 bg-background border border-border rounded-md p-1 shadow-lg">
+          <Input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            className="h-7 w-40 text-xs"
+          />
+          <span className="text-xs text-muted-foreground px-1 min-w-[3rem] text-center">
+            {searchResults.total > 0 ? `${searchResults.current}/${searchResults.total}` : "0/0"}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={findPrevious}
+            title="Previous (Shift+Enter)"
+            className="h-6 w-6"
+          >
+            ↑
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={findNext}
+            title="Next (Enter)"
+            className="h-6 w-6"
+          >
+            ↓
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={closeSearch}
+            title="Close (Escape)"
+            className="h-6 w-6"
+          >
+            ✕
+          </Button>
+        </div>
+      )}
       {isDragging && (
         <div className="absolute inset-0 bg-primary/10 pointer-events-none flex items-center justify-center z-10">
           <div className="bg-background/90 border border-primary rounded-lg px-4 py-3 text-center shadow-lg">
