@@ -29,14 +29,34 @@ else
     exit 1
 fi
 
-# Build
+# Build (allow DMG bundling to fail, we'll create it manually)
 echo -e "${YELLOW}Building and signing...${NC}"
-npm run tauri build
+npm run tauri build || true
 
-# Find the DMG
-DMG_PATH=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
+# Check if .app was created
+APP_PATH="src-tauri/target/release/bundle/macos/aTerm.app"
+if [ ! -d "$APP_PATH" ]; then
+    echo -e "${RED}Build failed - no .app bundle found${NC}"
+    exit 1
+fi
 
-if [ -z "$DMG_PATH" ]; then
+# Create DMG manually if it doesn't exist
+DMG_DIR="src-tauri/target/release/bundle/dmg"
+DMG_PATH="${DMG_DIR}/aTerm_${VERSION}_aarch64.dmg"
+
+if [ ! -f "$DMG_PATH" ]; then
+    echo -e "${YELLOW}Creating DMG manually...${NC}"
+    mkdir -p "$DMG_DIR"
+
+    # Create DMG with hdiutil
+    hdiutil create -volname "aTerm" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+
+    # Sign the DMG
+    echo -e "${YELLOW}Signing DMG...${NC}"
+    codesign --force --sign "$APPLE_SIGNING_IDENTITY" "$DMG_PATH"
+fi
+
+if [ ! -f "$DMG_PATH" ]; then
     echo -e "${RED}No DMG found!${NC}"
     exit 1
 fi
