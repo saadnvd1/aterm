@@ -1,52 +1,86 @@
 # aTerm
 
-Agent-focused terminal workspace built with Tauri + React + xterm.js.
+A modern terminal workspace designed for agentic coding workflows. Run AI coding assistants (Claude Code, Aider, OpenCode) alongside your shell, dev server, and git panel in a unified, project-based interface.
+
+![aTerm Screenshot](https://github.com/saadnvd1/aterm/raw/main/screenshot.png)
+
+## Why aTerm?
+
+When working with AI coding agents, you need multiple terminals running simultaneously:
+- **AI Assistant** - Claude Code, Aider, or OpenCode doing the heavy lifting
+- **Shell** - Running commands, checking outputs
+- **Dev Server** - Watching your app in real-time
+- **Tests** - Running test suites
+
+aTerm gives you predefined layouts optimized for these workflows, with instant project switching and persistent terminals that stay alive in the background.
 
 ## Features
 
-- **Project-based workspaces** - Organize terminals by project with instant switching
-- **iTerm2-style profiles** - Reusable terminal configurations (command, color)
-- **Window layouts** - Predefined pane arrangements (AI + Shell, Quad, etc.)
-- **Multi-provider support** - Claude Code, OpenCode, Aider, Cursor, and more
-- **Drag-to-resize** - Resize panes and rows by dragging borders
-- **Split panes** - Right-click to split vertically/horizontally with any profile
-- **Maximize pane** - Shift+Cmd+Enter to focus on a single pane
-- **Per-pane font size** - Cmd+Plus/Cmd+Minus to adjust font size
-- **Configurable themes** - Midnight, Dracula, Nord, Tokyo Night, Gruvbox
-- **Persistent terminals** - Terminals stay alive when switching projects
+- **Agentic Layouts** - Pre-configured for AI-assisted development (AI + Shell, AI + Dev + Shell, AI + Git)
+- **Project Workspaces** - Switch between projects instantly with Cmd+1-9, terminals persist in background
+- **Built-in Git Panel** - Stage, commit, push, and view diffs without leaving the terminal
+- **Multi-Agent Support** - Claude Code, Aider, OpenCode, Cursor, and custom commands
+- **Split Panes** - Right-click to split with any profile, drag borders to resize
+- **Pane Renaming** - Double-click or right-click to rename panes
+- **Maximize Mode** - Shift+Cmd+Enter to focus on a single pane
+- **Per-Pane Font Size** - Cmd+Plus/Minus to adjust individual pane fonts
+- **Themes** - Midnight, Dracula, Nord, Tokyo Night, Gruvbox
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
+| Cmd+1-9 | Switch to project 1-9 |
 | Shift+Cmd+Enter | Maximize/restore focused pane |
-| Cmd++ | Increase font size (focused pane) |
-| Cmd+- | Decrease font size (focused pane) |
+| Cmd+D | Split pane with shell |
+| Cmd+W | Close focused pane |
+| Cmd++ | Increase font size |
+| Cmd+- | Decrease font size |
 
-## Stack
+## Default Layouts
 
-- **Frontend**: React + TypeScript + xterm.js
-- **Backend**: Tauri (Rust) with portable-pty
-- **Config**: JSON stored in `~/.config/aterm/`
+| Layout | Panes |
+|--------|-------|
+| AI + Shell | Claude Code (2/3) + Shell (1/3) |
+| AI + Dev + Shell | Claude Code + Dev Server (top), Shell (bottom) |
+| AI + Git | Claude Code (2/3) + Git Panel (1/3) |
+| Focused AI | Single Claude Code pane |
+| Quad | 4 panes in 2x2 grid |
 
-## Development
+## Installation
+
+### Download
+
+Download the latest release from [Releases](https://github.com/saadnvd1/aterm/releases).
+
+### Build from Source
 
 ```bash
+# Install dependencies
 npm install
+
+# Development
 npm run tauri dev
-```
 
-## Build
-
-```bash
+# Production build
 npm run tauri build
 ```
 
+## Stack
+
+- **Frontend**: React 18 + TypeScript + Tailwind CSS + shadcn/ui
+- **Terminal**: xterm.js with fit addon
+- **Backend**: Tauri 2 (Rust) with portable-pty
+- **Drag & Drop**: @dnd-kit for pane reordering
+
 ## Configuration
 
-Settings are stored in `~/.config/aterm/config.json`:
+Config stored in `~/Library/Application Support/aterm/config.json`:
 
-- **Projects**: Name, path, git remote, provider, layout
-- **Profiles**: Terminal configurations (name, command, color)
-- **Layouts**: Pane arrangements with rows and columns
-- **Themes**: Visual appearance settings
+- **Projects** - Name, path, git remote, AI provider, layout
+- **Profiles** - Terminal presets (command, accent color)
+- **Layouts** - Custom pane arrangements
+
+## License
+
+MIT
