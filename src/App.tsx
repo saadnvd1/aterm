@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
+import { StatusBar } from "./components/StatusBar";
 import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 import type { Layout } from "./lib/layouts";
 import appIcon from "./assets/icon.png";
@@ -312,18 +313,19 @@ export default function App() {
         onConfirm={handleExitConfirm}
         onCancel={handleExitCancel}
       />
-      {sidebarVisible && (
-        <ProjectSidebar
-          config={config}
-          selectedProject={selectedProject}
-          onSelectProject={handleSelectProject}
-          onConfigChange={handleConfigChange}
-          onSaveWindowArrangement={handleSaveWindowArrangement}
-          onRestoreWindowArrangement={handleRestoreWindowArrangement}
-          onAddGitPane={handleAddGitPane}
-        />
-      )}
-      <div style={styles.main}>
+      <div style={styles.mainArea}>
+        {sidebarVisible && (
+          <ProjectSidebar
+            config={config}
+            selectedProject={selectedProject}
+            onSelectProject={handleSelectProject}
+            onConfigChange={handleConfigChange}
+            onSaveWindowArrangement={handleSaveWindowArrangement}
+            onRestoreWindowArrangement={handleRestoreWindowArrangement}
+            onAddGitPane={handleAddGitPane}
+          />
+        )}
+        <div style={styles.main}>
         {openedProjectsList.length > 0 ? (
           // Render all opened projects, hide inactive ones
           openedProjectsList.map((project) => {
@@ -370,7 +372,9 @@ export default function App() {
             </div>
           </div>
         )}
+        </div>
       </div>
+      <StatusBar selectedProject={selectedProject} />
     </div>
   );
 }
@@ -378,8 +382,14 @@ export default function App() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     display: "flex",
+    flexDirection: "column",
     height: "100%",
     width: "100%",
+  },
+  mainArea: {
+    display: "flex",
+    flex: 1,
+    overflow: "hidden",
   },
   main: {
     flex: 1,
