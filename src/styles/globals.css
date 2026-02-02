@@ -186,6 +186,181 @@
     --terminal-cursor: 48 45% 81%;
   }
 
+  /* One Dark theme */
+  [data-theme="oneDark"] {
+    --background: 220 13% 15%;
+    --foreground: 220 14% 71%;
+
+    --card: 220 13% 18%;
+    --card-foreground: 220 14% 71%;
+
+    --popover: 220 13% 17%;
+    --popover-foreground: 220 14% 71%;
+
+    --primary: 207 82% 66%;
+    --primary-foreground: 220 13% 15%;
+
+    --secondary: 220 13% 22%;
+    --secondary-foreground: 220 14% 71%;
+
+    --muted: 220 13% 22%;
+    --muted-foreground: 220 9% 40%;
+
+    --accent: 220 13% 26%;
+    --accent-foreground: 220 14% 71%;
+
+    --destructive: 355 65% 65%;
+    --destructive-foreground: 220 14% 71%;
+
+    --border: 220 13% 28%;
+    --input: 220 13% 18%;
+    --ring: 207 82% 66%;
+
+    --terminal-bg: 220 13% 15%;
+    --terminal-fg: 220 14% 71%;
+    --terminal-cursor: 219 100% 66%;
+  }
+
+  /* Catppuccin Mocha theme */
+  [data-theme="catppuccin"] {
+    --background: 240 21% 15%;
+    --foreground: 226 64% 88%;
+
+    --card: 240 21% 12%;
+    --card-foreground: 226 64% 88%;
+
+    --popover: 240 21% 17%;
+    --popover-foreground: 226 64% 88%;
+
+    --primary: 267 84% 81%;
+    --primary-foreground: 240 21% 15%;
+
+    --secondary: 240 21% 20%;
+    --secondary-foreground: 226 64% 88%;
+
+    --muted: 240 21% 20%;
+    --muted-foreground: 228 24% 72%;
+
+    --accent: 240 21% 25%;
+    --accent-foreground: 226 64% 88%;
+
+    --destructive: 343 81% 75%;
+    --destructive-foreground: 226 64% 88%;
+
+    --border: 237 16% 31%;
+    --input: 240 21% 17%;
+    --ring: 267 84% 81%;
+
+    --terminal-bg: 240 21% 15%;
+    --terminal-fg: 226 64% 88%;
+    --terminal-cursor: 10 56% 91%;
+  }
+
+  /* Monokai Pro theme */
+  [data-theme="monokai"] {
+    --background: 300 4% 17%;
+    --foreground: 60 7% 98%;
+
+    --card: 300 4% 13%;
+    --card-foreground: 60 7% 98%;
+
+    --popover: 300 4% 20%;
+    --popover-foreground: 60 7% 98%;
+
+    --primary: 45 97% 70%;
+    --primary-foreground: 300 4% 17%;
+
+    --secondary: 300 2% 25%;
+    --secondary-foreground: 60 7% 98%;
+
+    --muted: 300 2% 25%;
+    --muted-foreground: 300 1% 58%;
+
+    --accent: 300 4% 30%;
+    --accent-foreground: 60 7% 98%;
+
+    --destructive: 349 100% 69%;
+    --destructive-foreground: 60 7% 98%;
+
+    --border: 300 2% 36%;
+    --input: 300 4% 20%;
+    --ring: 45 97% 70%;
+
+    --terminal-bg: 300 4% 17%;
+    --terminal-fg: 60 7% 98%;
+    --terminal-cursor: 60 7% 98%;
+  }
+
+  /* Solarized Dark theme */
+  [data-theme="solarized"] {
+    --background: 192 100% 11%;
+    --foreground: 186 8% 55%;
+
+    --card: 192 81% 14%;
+    --card-foreground: 186 8% 55%;
+
+    --popover: 192 81% 16%;
+    --popover-foreground: 186 8% 55%;
+
+    --primary: 205 82% 49%;
+    --primary-foreground: 192 100% 11%;
+
+    --secondary: 192 81% 18%;
+    --secondary-foreground: 186 8% 55%;
+
+    --muted: 192 81% 18%;
+    --muted-foreground: 194 14% 45%;
+
+    --accent: 192 81% 22%;
+    --accent-foreground: 186 8% 55%;
+
+    --destructive: 1 71% 52%;
+    --destructive-foreground: 186 8% 55%;
+
+    --border: 193 12% 45%;
+    --input: 192 81% 14%;
+    --ring: 205 82% 49%;
+
+    --terminal-bg: 192 100% 11%;
+    --terminal-fg: 186 8% 55%;
+    --terminal-cursor: 186 8% 55%;
+  }
+
+  /* Rosé Pine theme */
+  [data-theme="rosePine"] {
+    --background: 249 22% 12%;
+    --foreground: 245 50% 91%;
+
+    --card: 249 15% 15%;
+    --card-foreground: 245 50% 91%;
+
+    --popover: 248 17% 17%;
+    --popover-foreground: 245 50% 91%;
+
+    --primary: 267 57% 78%;
+    --primary-foreground: 249 22% 12%;
+
+    --secondary: 249 15% 19%;
+    --secondary-foreground: 245 50% 91%;
+
+    --muted: 249 15% 19%;
+    --muted-foreground: 257 18% 61%;
+
+    --accent: 249 15% 23%;
+    --accent-foreground: 245 50% 91%;
+
+    --destructive: 343 76% 68%;
+    --destructive-foreground: 245 50% 91%;
+
+    --border: 249 12% 29%;
+    --input: 249 15% 17%;
+    --ring: 267 57% 78%;
+
+    --terminal-bg: 249 22% 12%;
+    --terminal-fg: 245 50% 91%;
+    --terminal-cursor: 249 15% 35%;
+  }
+
   * {
     @apply border-border;
   }
