@@ -790,6 +790,7 @@ function SortablePane({
           title={paneName || profile.name}
           cwd={project.path}
           accentColor={profile.color}
+          projectColor={project.color}
           onFocus={onFocus}
           isFocused={isFocused}
           onClose={onClosePane}
@@ -806,6 +807,7 @@ function SortablePane({
           cwd={project.path}
           command={buildCommand(profile.command, project.skipPermissions)}
           accentColor={profile.color}
+          projectColor={project.color}
           defaultFontSize={defaultFontSize}
           fontSize={fontSize}
           scrollback={profile.scrollback ?? defaultScrollback}

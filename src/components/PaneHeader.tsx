@@ -7,6 +7,7 @@ interface Props {
   title: string;
   subtitle?: string;
   accentColor?: string;
+  projectColor?: string; // If set, tints the entire header background
   isFocused?: boolean;
   canClose?: boolean;
   onClose?: () => void;
@@ -22,6 +23,7 @@ export function PaneHeader({
   title,
   subtitle,
   accentColor,
+  projectColor,
   isFocused,
   canClose,
   onClose,
@@ -78,12 +80,21 @@ export function PaneHeader({
     }
   }
 
+  // Generate background from project color
+  const headerStyle = projectColor
+    ? {
+        backgroundColor: projectColor,
+        borderBottomColor: projectColor,
+      }
+    : undefined;
+
   return (
     <div
       className={cn(
         "flex items-center justify-between px-3 py-2 border-b border-border cursor-grab shrink-0 transition-colors",
-        isFocused ? "bg-accent" : "bg-secondary"
+        !projectColor && (isFocused ? "bg-accent" : "bg-secondary")
       )}
+      style={headerStyle}
       {...dragHandleProps}
     >
       <div className="flex items-center gap-2">

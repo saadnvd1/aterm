@@ -43,6 +43,7 @@ interface Props {
   cwd: string;
   command?: string;
   accentColor?: string;
+  projectColor?: string;
   defaultFontSize?: number;
   fontSize?: number;
   scrollback?: number;
@@ -69,7 +70,7 @@ const MAX_FONT_SIZE = 32;
 
 const DEFAULT_SCROLLBACK = 10000;
 
-export function TerminalPane({ id, title, cwd, command, accentColor, defaultFontSize = 13, fontSize: savedFontSize, scrollback = DEFAULT_SCROLLBACK, onFontSizeChange, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps, isProjectActive = true }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, projectColor, defaultFontSize = 13, fontSize: savedFontSize, scrollback = DEFAULT_SCROLLBACK, onFontSizeChange, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps, isProjectActive = true }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -558,6 +559,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, defaultFont
         title={title}
         subtitle={cwd.split("/").pop()}
         accentColor={accentColor}
+        projectColor={projectColor}
         isFocused={isFocused}
         canClose={canClose}
         onClose={onClose}

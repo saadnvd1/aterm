@@ -11,6 +11,8 @@ export interface ProjectConfig {
   layoutId: string;
   skipPermissions?: boolean;
   createdAt: string;
+  icon?: string; // Emoji or icon identifier
+  color?: string; // Hex color for project branding (affects terminal headers)
 }
 
 export interface AppConfig {

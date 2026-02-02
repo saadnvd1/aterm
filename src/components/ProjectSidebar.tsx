@@ -8,6 +8,7 @@ import type { ProjectConfig, AppConfig } from "../lib/config";
 import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
 import { SettingsModal } from "./SettingsModal";
+import { ProjectSettingsModal } from "./ProjectSettingsModal";
 
 interface Props {
   config: AppConfig;
@@ -36,6 +37,7 @@ export function ProjectSidebar({
     x: number;
     y: number;
   } | null>(null);
+  const [editingProject, setEditingProject] = useState<ProjectConfig | null>(null);
 
   const fuse = useMemo(
     () =>
@@ -66,6 +68,14 @@ export function ProjectSidebar({
       onSelectProject(newProjects[0] || null);
     }
     setContextMenu(null);
+  }
+
+  function handleProjectSave(updatedProject: ProjectConfig) {
+    const newProjects = config.projects.map((p) =>
+      p.id === updatedProject.id ? updatedProject : p
+    );
+    onConfigChange({ ...config, projects: newProjects });
+    setEditingProject(null);
   }
 
   function handleContextMenu(e: React.MouseEvent, project: ProjectConfig) {
@@ -139,10 +149,18 @@ export function ProjectSidebar({
                   onClick={() => onSelectProject(project)}
                   onContextMenu={(e) => handleContextMenu(e, project)}
                   className={cn(
-                    "w-full px-3 py-2.5 flex items-center bg-transparent border-none rounded-md text-foreground cursor-pointer text-left mb-0.5 transition-colors hover:bg-accent",
+                    "w-full px-3 py-2.5 flex items-center gap-2.5 bg-transparent border-none rounded-md text-foreground cursor-pointer text-left mb-0.5 transition-colors hover:bg-accent",
                     selectedProject?.id === project.id && "bg-accent"
                   )}
                 >
+                  {project.icon ? (
+                    <span className="text-base shrink-0">{project.icon}</span>
+                  ) : project.color ? (
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: project.color }}
+                    />
+                  ) : null}
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     <span className="text-[13px] font-medium overflow-hidden text-ellipsis whitespace-nowrap">
                       {project.name}
@@ -172,6 +190,16 @@ export function ProjectSidebar({
               top: contextMenu.y,
             }}
           >
+            <button
+              className="w-full px-3 py-2 bg-transparent border-none rounded text-foreground text-xs cursor-pointer text-left transition-colors hover:bg-accent"
+              onClick={() => {
+                setEditingProject(contextMenu.project);
+                setContextMenu(null);
+              }}
+            >
+              Project Settings...
+            </button>
+            <div className="h-px bg-border my-1" />
             <button
               className="w-full px-3 py-2 bg-transparent border-none rounded text-foreground text-xs cursor-pointer text-left transition-colors hover:bg-accent"
               onClick={() => {
@@ -215,6 +243,16 @@ export function ProjectSidebar({
         config={config}
         onConfigChange={onConfigChange}
       />
+
+      {editingProject && (
+        <ProjectSettingsModal
+          isOpen={true}
+          onClose={() => setEditingProject(null)}
+          project={editingProject}
+          layouts={config.layouts}
+          onSave={handleProjectSave}
+        />
+      )}
     </>
   );
 }

@@ -17,6 +17,7 @@ interface Props {
   title: string;
   cwd: string;
   accentColor?: string;
+  projectColor?: string;
   onFocus?: () => void;
   isFocused?: boolean;
   onClose?: () => void;
@@ -29,7 +30,7 @@ interface Props {
 
 const POLL_INTERVAL = 5000;
 
-export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
+export function GitPane({ title, cwd, accentColor, projectColor, onFocus, isFocused, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
   const [activeTab, setActiveTab] = useState<GitTab>("changes");
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
@@ -247,6 +248,7 @@ export function GitPane({ title, cwd, accentColor, onFocus, isFocused, onClose, 
       <PaneHeader
         title={title}
         accentColor={accentColor}
+        projectColor={projectColor}
         isFocused={isFocused}
         canClose={canClose}
         onClose={onClose}
