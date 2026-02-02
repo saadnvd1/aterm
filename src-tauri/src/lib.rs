@@ -732,19 +732,11 @@ fn get_iterm_profiles() -> Result<Vec<ITermProfile>, String> {
                 .unwrap_or("")
                 .to_string();
 
-            // Check if custom command is set
-            let custom_command = bookmark_dict.get("Custom Command")
+            // Get command if not empty
+            let command = bookmark_dict.get("Command")
                 .and_then(|v| v.as_string())
-                .unwrap_or("No");
-
-            let command = if custom_command == "Yes" {
-                bookmark_dict.get("Command")
-                    .and_then(|v| v.as_string())
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-            } else {
-                None
-            };
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
 
             let working_directory = bookmark_dict.get("Working Directory")
                 .and_then(|v| v.as_string())
