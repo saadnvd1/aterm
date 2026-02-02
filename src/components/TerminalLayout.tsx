@@ -60,11 +60,14 @@ interface Props {
   project: ProjectConfig;
   layout: Layout;
   profiles: TerminalProfile[];
+  defaultFontSize: number;
+  paneFontSizes: Record<string, number>;
+  onPaneFontSizeChange: (paneInstanceId: string, fontSize: number) => void;
   onLayoutChange: (layout: Layout) => void;
   onPersistentLayoutChange?: (layout: Layout) => void;
 }
 
-export function TerminalLayout({ project, layout, profiles, onLayoutChange, onPersistentLayoutChange }: Props) {
+export function TerminalLayout({ project, layout, profiles, defaultFontSize, paneFontSizes, onPaneFontSizeChange, onLayoutChange, onPersistentLayoutChange }: Props) {
   const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
   const [maximizedPaneId, setMaximizedPaneId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -423,6 +426,9 @@ export function TerminalLayout({ project, layout, profiles, onLayoutChange, onPe
                 project={project}
                 profiles={profiles}
                 layout={layout}
+                defaultFontSize={defaultFontSize}
+                paneFontSizes={paneFontSizes}
+                onPaneFontSizeChange={onPaneFontSizeChange}
                 onLayoutChange={onLayoutChange}
                 onPersistentLayoutChange={onPersistentLayoutChange}
                 onSplitVertical={(paneId, profileId) => splitVertical(paneId, row.id, profileId)}
@@ -470,6 +476,9 @@ interface RowProps {
   project: ProjectConfig;
   profiles: TerminalProfile[];
   layout: Layout;
+  defaultFontSize: number;
+  paneFontSizes: Record<string, number>;
+  onPaneFontSizeChange: (paneInstanceId: string, fontSize: number) => void;
   onLayoutChange: (layout: Layout) => void;
   onPersistentLayoutChange?: (layout: Layout) => void;
   onSplitVertical: (paneId: string, profileId: string) => void;
@@ -493,6 +502,9 @@ function RowWithResizer({
   project,
   profiles,
   layout,
+  defaultFontSize,
+  paneFontSizes,
+  onPaneFontSizeChange,
   onLayoutChange,
   onPersistentLayoutChange,
   onSplitVertical,
@@ -573,6 +585,9 @@ function RowWithResizer({
               profiles={profiles}
               row={row}
               layout={layout}
+              defaultFontSize={defaultFontSize}
+              fontSize={paneFontSizes[`${project.id}-${pane.id}`]}
+              onFontSizeChange={(size) => onPaneFontSizeChange(`${project.id}-${pane.id}`, size)}
               onLayoutChange={onLayoutChange}
               onSplitVertical={(profileId) => onSplitVertical(pane.id, profileId)}
               onSplitHorizontal={onSplitHorizontal}
@@ -620,6 +635,9 @@ interface PaneProps {
   profiles: TerminalProfile[];
   row: LayoutRow;
   layout: Layout;
+  defaultFontSize: number;
+  fontSize: number | undefined;
+  onFontSizeChange: (size: number) => void;
   onLayoutChange: (layout: Layout) => void;
   onSplitVertical: (profileId: string) => void;
   onSplitHorizontal: (profileId: string) => void;
@@ -648,6 +666,9 @@ function SortablePane({
   profiles,
   row,
   layout,
+  defaultFontSize,
+  fontSize,
+  onFontSizeChange,
   onLayoutChange,
   onSplitVertical,
   onSplitHorizontal,
@@ -766,6 +787,9 @@ function SortablePane({
           cwd={project.path}
           command={buildCommand(profile.command, project.skipPermissions)}
           accentColor={profile.color}
+          defaultFontSize={defaultFontSize}
+          fontSize={fontSize}
+          onFontSizeChange={onFontSizeChange}
           onFocus={onFocus}
           isFocused={isFocused}
           isMaximized={isMaximized}

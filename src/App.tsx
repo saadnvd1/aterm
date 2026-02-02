@@ -100,6 +100,7 @@ export default function App() {
           ...savedConfig,
           profiles: savedConfig.profiles?.length ? savedConfig.profiles : DEFAULT_CONFIG.profiles,
           layouts: savedConfig.layouts?.length ? savedConfig.layouts : DEFAULT_CONFIG.layouts,
+          paneFontSizes: savedConfig.paneFontSizes || {},
         };
         setConfig(merged);
         setSidebarVisible(merged.sidebarVisible !== false);
@@ -241,6 +242,15 @@ export default function App() {
     }
   }
 
+  // Handle per-pane font size changes
+  function handlePaneFontSizeChange(paneInstanceId: string, fontSize: number) {
+    const newPaneFontSizes = {
+      ...(config.paneFontSizes || {}),
+      [paneInstanceId]: fontSize,
+    };
+    updateConfig({ ...config, paneFontSizes: newPaneFontSizes });
+  }
+
   // Add a git pane to the current project's layout
   function handleAddGitPane() {
     if (!selectedProject) return;
@@ -326,6 +336,9 @@ export default function App() {
                   project={project}
                   layout={layout}
                   profiles={config.profiles}
+                  defaultFontSize={config.defaultFontSize ?? 13}
+                  paneFontSizes={config.paneFontSizes || {}}
+                  onPaneFontSizeChange={handlePaneFontSizeChange}
                   onLayoutChange={(newLayout) => {
                     handleRuntimeLayoutChange(project.id, newLayout);
                   }}

@@ -190,6 +190,31 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
                 ))}
               </div>
             </div>
+
+            <div className="mb-6">
+              <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Terminal Font Size
+              </h3>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min={8}
+                  max={32}
+                  value={config.defaultFontSize ?? 13}
+                  onChange={(e) => {
+                    const size = Math.min(32, Math.max(8, parseInt(e.target.value, 10) || 13));
+                    onConfigChange({ ...config, defaultFontSize: size });
+                  }}
+                  className="w-20"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Default: 13px (range: 8-32)
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Use Cmd+Plus/Minus in a terminal to adjust individual panes. Per-pane sizes are remembered.
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="profiles" className="flex-1 overflow-auto mt-4">

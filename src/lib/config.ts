@@ -20,6 +20,9 @@ export interface AppConfig {
   defaultProvider: ProviderId;
   defaultLayoutId: string;
   sidebarVisible?: boolean;
+  defaultFontSize?: number;
+  // Per-pane font size overrides, keyed by pane instance ID (e.g., "projectId-paneId")
+  paneFontSizes?: Record<string, number>;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -29,6 +32,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   defaultProvider: "claude",
   defaultLayoutId: "ai-shell",
   sidebarVisible: true,
+  defaultFontSize: 13,
+  paneFontSizes: {},
 };
 
 export function createProject(

@@ -25,6 +25,9 @@ interface Props {
   cwd: string;
   command?: string;
   accentColor?: string;
+  defaultFontSize?: number;
+  fontSize?: number;
+  onFontSizeChange?: (size: number) => void;
   onFocus?: () => void;
   isFocused?: boolean;
   isMaximized?: boolean;
@@ -37,11 +40,10 @@ interface Props {
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
-const DEFAULT_FONT_SIZE = 13;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 32;
 
-export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
+export function TerminalPane({ id, title, cwd, command, accentColor, defaultFontSize = 13, fontSize: savedFontSize, onFontSizeChange, onFocus, isFocused, isMaximized, onToggleMaximize, onClose, onRename, triggerRename, onTriggerRenameComplete, canClose, dragHandleProps }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -49,7 +51,8 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
   const spawnedRef = useRef(false);
   const onToggleMaximizeRef = useRef(onToggleMaximize);
   const onFocusRef = useRef(onFocus);
-  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  // Use saved font size if available, otherwise use default
+  const [fontSize, setFontSize] = useState(savedFontSize ?? defaultFontSize);
   const [isDragging, setIsDragging] = useState(false);
 
   // Keep the refs updated with latest callbacks
@@ -62,7 +65,7 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
 
     const terminal = new Terminal({
       fontFamily: theme.terminal.fontFamily,
-      fontSize: DEFAULT_FONT_SIZE,
+      fontSize: savedFontSize ?? defaultFontSize,
       cursorBlink: true,
       allowProposedApi: true,
       theme: theme.terminal.theme,
@@ -303,7 +306,11 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
     if (e.metaKey && (e.key === "+" || e.key === "=")) {
       e.preventDefault();
       e.stopPropagation();
-      setFontSize((prev) => Math.min(prev + 1, MAX_FONT_SIZE));
+      setFontSize((prev) => {
+        const newSize = Math.min(prev + 1, MAX_FONT_SIZE);
+        onFontSizeChange?.(newSize);
+        return newSize;
+      });
       return;
     }
 
@@ -311,7 +318,11 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
     if (e.metaKey && e.key === "-") {
       e.preventDefault();
       e.stopPropagation();
-      setFontSize((prev) => Math.max(prev - 1, MIN_FONT_SIZE));
+      setFontSize((prev) => {
+        const newSize = Math.max(prev - 1, MIN_FONT_SIZE);
+        onFontSizeChange?.(newSize);
+        return newSize;
+      });
       return;
     }
 
