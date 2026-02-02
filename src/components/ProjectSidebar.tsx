@@ -3,7 +3,7 @@ import Fuse from "fuse.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Settings, Plus } from "lucide-react";
+import { Settings, Plus, GitBranch } from "lucide-react";
 import type { ProjectConfig, AppConfig } from "../lib/config";
 import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
@@ -16,6 +16,7 @@ interface Props {
   onConfigChange: (config: AppConfig) => void;
   onSaveWindowArrangement: (projectId: string) => void;
   onRestoreWindowArrangement: (projectId: string) => void;
+  onAddGitPane: () => void;
 }
 
 export function ProjectSidebar({
@@ -25,6 +26,7 @@ export function ProjectSidebar({
   onConfigChange,
   onSaveWindowArrangement,
   onRestoreWindowArrangement,
+  onAddGitPane,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -76,6 +78,15 @@ export function ProjectSidebar({
       <div className="w-[220px] bg-secondary border-r border-border flex flex-col">
         <div className="px-4 py-3.5 flex justify-end items-center border-b border-border">
           <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onAddGitPane}
+              title="Open Git Panel"
+              disabled={!selectedProject}
+            >
+              <GitBranch className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon-sm"

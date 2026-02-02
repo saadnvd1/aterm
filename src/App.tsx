@@ -138,6 +138,40 @@ export default function App() {
     }));
   }
 
+  // Add a git pane to the current project's layout
+  function handleAddGitPane() {
+    if (!selectedProject) return;
+
+    const layout = runtimeLayouts[selectedProject.id];
+    if (!layout || layout.rows.length === 0) return;
+
+    // Check if git pane already exists
+    const hasGitPane = layout.rows.some((row) =>
+      row.panes.some((pane) => {
+        const profile = config.profiles.find((p) => p.id === pane.profileId);
+        return profile?.type === "git";
+      })
+    );
+
+    if (hasGitPane) return; // Already has a git pane
+
+    // Add git pane to the first row
+    const newPane = {
+      id: crypto.randomUUID(),
+      profileId: "git",
+      flex: 1,
+    };
+
+    const newRows = layout.rows.map((row, index) => {
+      if (index === 0) {
+        return { ...row, panes: [...row.panes, newPane] };
+      }
+      return row;
+    });
+
+    handleRuntimeLayoutChange(selectedProject.id, { ...layout, rows: newRows });
+  }
+
   if (loading) {
     return (
       <div style={styles.loading}>
@@ -158,6 +192,7 @@ export default function App() {
         onConfigChange={handleConfigChange}
         onSaveWindowArrangement={handleSaveWindowArrangement}
         onRestoreWindowArrangement={handleRestoreWindowArrangement}
+        onAddGitPane={handleAddGitPane}
       />
       <div style={styles.main}>
         {openedProjectsList.length > 0 ? (
