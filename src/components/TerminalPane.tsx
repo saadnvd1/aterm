@@ -73,8 +73,13 @@ export function TerminalPane({ id, title, cwd, command, accentColor, onFocus, is
       command,
     }).catch(console.error);
 
-    const unlisten = listen<string>(`pty-output-${id}`, (event) => {
-      terminal.write(event.payload);
+    // TextDecoder handles streaming UTF-8 properly (keeps partial sequences for next chunk)
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+
+    const unlisten = listen<number[]>(`pty-output-${id}`, (event) => {
+      const bytes = new Uint8Array(event.payload);
+      const text = decoder.decode(bytes, { stream: true });
+      terminal.write(text);
     });
 
     terminal.onData((data) => {

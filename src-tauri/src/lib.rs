@@ -743,13 +743,13 @@ fn spawn_pty(
 
     let event_id = id.clone();
     thread::spawn(move || {
-        let mut buf = [0u8; 4096];
+        let mut buf = [0u8; 8192];
         loop {
             match reader.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let _ = app.emit(&format!("pty-output-{}", event_id), data);
+                    // Send as Vec<u8> to preserve exact bytes - JS side will decode
+                    let _ = app.emit(&format!("pty-output-{}", event_id), &buf[..n]);
                 }
                 Err(_) => break,
             }
