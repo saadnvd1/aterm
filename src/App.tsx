@@ -124,11 +124,33 @@ export default function App() {
     const runtimeLayout = runtimeLayouts[projectId];
     if (!project || !runtimeLayout) return;
 
-    // Update the saved layout with the runtime layout's rows
-    const newLayouts = config.layouts.map((l) =>
-      l.id === project.layoutId ? { ...l, rows: JSON.parse(JSON.stringify(runtimeLayout.rows)) } : l
-    );
-    updateConfig({ ...config, layouts: newLayouts });
+    // Check if this project already has a project-specific layout
+    const projectSpecificLayoutId = `project-${projectId}`;
+    const hasProjectSpecificLayout = config.layouts.some((l) => l.id === projectSpecificLayoutId);
+
+    if (hasProjectSpecificLayout) {
+      // Update the existing project-specific layout
+      const newLayouts = config.layouts.map((l) =>
+        l.id === projectSpecificLayoutId ? { ...l, rows: JSON.parse(JSON.stringify(runtimeLayout.rows)) } : l
+      );
+      updateConfig({ ...config, layouts: newLayouts });
+    } else {
+      // Create a new project-specific layout (clone from runtime)
+      const newLayout: Layout = {
+        id: projectSpecificLayoutId,
+        name: `${project.name} Layout`,
+        rows: JSON.parse(JSON.stringify(runtimeLayout.rows)),
+      };
+      // Update the project to use this new layout
+      const newProjects = config.projects.map((p) =>
+        p.id === projectId ? { ...p, layoutId: projectSpecificLayoutId } : p
+      );
+      updateConfig({
+        ...config,
+        layouts: [...config.layouts, newLayout],
+        projects: newProjects,
+      });
+    }
   }
 
   // Restore the saved layout to runtime
@@ -161,14 +183,35 @@ export default function App() {
       [projectId]: newLayout,
     }));
 
-    // Also save to config
+    // Also save to config - use same logic as handleSaveWindowArrangement
     const project = config.projects.find((p) => p.id === projectId);
     if (!project) return;
 
-    const newLayouts = config.layouts.map((l) =>
-      l.id === project.layoutId ? { ...l, rows: JSON.parse(JSON.stringify(newLayout.rows)) } : l
-    );
-    updateConfig({ ...config, layouts: newLayouts });
+    const projectSpecificLayoutId = `project-${projectId}`;
+    const hasProjectSpecificLayout = config.layouts.some((l) => l.id === projectSpecificLayoutId);
+
+    if (hasProjectSpecificLayout || project.layoutId === projectSpecificLayoutId) {
+      // Update existing project-specific layout
+      const newLayouts = config.layouts.map((l) =>
+        l.id === projectSpecificLayoutId ? { ...l, rows: JSON.parse(JSON.stringify(newLayout.rows)) } : l
+      );
+      updateConfig({ ...config, layouts: newLayouts });
+    } else {
+      // Create a new project-specific layout
+      const newLayoutObj: Layout = {
+        id: projectSpecificLayoutId,
+        name: `${project.name} Layout`,
+        rows: JSON.parse(JSON.stringify(newLayout.rows)),
+      };
+      const newProjects = config.projects.map((p) =>
+        p.id === projectId ? { ...p, layoutId: projectSpecificLayoutId } : p
+      );
+      updateConfig({
+        ...config,
+        layouts: [...config.layouts, newLayoutObj],
+        projects: newProjects,
+      });
+    }
   }
 
   // Add a git pane to the current project's layout
