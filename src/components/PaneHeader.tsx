@@ -3,6 +3,26 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
+// Calculate relative luminance to determine if text should be light or dark
+function getLuminance(hex: string): number {
+  // Remove # if present
+  const color = hex.replace("#", "");
+  const r = parseInt(color.slice(0, 2), 16) / 255;
+  const g = parseInt(color.slice(2, 4), 16) / 255;
+  const b = parseInt(color.slice(4, 6), 16) / 255;
+
+  // Apply gamma correction
+  const [rs, gs, bs] = [r, g, b].map((c) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  );
+
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function shouldUseLightText(bgColor: string): boolean {
+  return getLuminance(bgColor) < 0.5;
+}
+
 interface Props {
   title: string;
   subtitle?: string;
@@ -80,7 +100,8 @@ export function PaneHeader({
     }
   }
 
-  // Generate background from project color
+  // Generate background from project color and determine text color
+  const useLightText = projectColor ? shouldUseLightText(projectColor) : false;
   const headerStyle = projectColor
     ? {
         backgroundColor: projectColor,
@@ -116,7 +137,10 @@ export function PaneHeader({
           />
         ) : (
           <span
-            className="text-xs font-medium text-foreground"
+            className={cn(
+              "text-xs font-medium",
+              useLightText ? "text-white" : "text-foreground"
+            )}
             onDoubleClick={handleDoubleClick}
             title={onRename ? "Double-click to rename" : undefined}
           >
@@ -126,13 +150,25 @@ export function PaneHeader({
         {titleExtra}
       </div>
       <div className="flex items-center gap-2">
-        {subtitle && <span className="text-[11px] text-muted-foreground">{subtitle}</span>}
+        {subtitle && (
+          <span
+            className={cn(
+              "text-[11px]",
+              useLightText ? "text-white/70" : "text-muted-foreground"
+            )}
+          >
+            {subtitle}
+          </span>
+        )}
         {actions}
         {canClose && (
           <Button
             variant="ghost"
             size="icon-sm"
-            className="h-5 w-5 opacity-60 hover:opacity-100"
+            className={cn(
+              "h-5 w-5 opacity-60 hover:opacity-100",
+              useLightText && "text-white hover:bg-white/20"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onClose?.();
