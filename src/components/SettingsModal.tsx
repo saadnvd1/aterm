@@ -8,6 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, X } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
@@ -482,19 +489,21 @@ function LayoutEditor({
             <div className="flex gap-1.5">
               {row.panes.map((pane) => (
                 <div key={pane.id} className="flex-1 flex gap-1">
-                  <select
+                  <Select
                     value={pane.profileId}
-                    onChange={(e) =>
-                      updatePaneProfile(row.id, pane.id, e.target.value)
-                    }
-                    className="flex-1 px-2 py-1.5 bg-secondary border border-border rounded text-foreground text-[11px] outline-none focus:ring-2 focus:ring-ring"
+                    onValueChange={(v) => updatePaneProfile(row.id, pane.id, v)}
                   >
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="flex-1 h-7 text-[11px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {row.panes.length > 1 && (
                     <Button
                       variant="outline"

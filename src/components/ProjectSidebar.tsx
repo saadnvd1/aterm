@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import Fuse from "fuse.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +35,19 @@ export function ProjectSidebar({
     y: number;
   } | null>(null);
 
-  const filtered = config.projects.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+  const fuse = useMemo(
+    () =>
+      new Fuse(config.projects, {
+        keys: ["name", "path"],
+        threshold: 0.4,
+        ignoreLocation: true,
+      }),
+    [config.projects]
   );
+
+  const filtered = search.trim()
+    ? fuse.search(search).map((result) => result.item)
+    : config.projects;
 
   function handleProjectAdded(project: ProjectConfig) {
     onConfigChange({
@@ -177,6 +188,7 @@ export function ProjectSidebar({
         onClose={() => setShowAddModal(false)}
         onProjectAdded={handleProjectAdded}
         layouts={config.layouts}
+        profiles={config.profiles}
       />
 
       <SettingsModal
