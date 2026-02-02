@@ -22,9 +22,29 @@ import { getVersion } from "@tauri-apps/api/app";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTheme } from "../context/ThemeContext";
 import { getThemeList } from "../lib/themes";
-import type { AppConfig } from "../lib/config";
+import type { AppConfig, ProjectConfig } from "../lib/config";
 import type { TerminalProfile } from "../lib/profiles";
 import type { Layout } from "../lib/layouts";
+
+// Group profiles by project
+function groupProfilesByProject(
+  profiles: TerminalProfile[]
+): { global: TerminalProfile[]; byProject: Map<string, TerminalProfile[]> } {
+  const global: TerminalProfile[] = [];
+  const byProject = new Map<string, TerminalProfile[]>();
+
+  for (const profile of profiles) {
+    if (!profile.projectId) {
+      global.push(profile);
+    } else {
+      const existing = byProject.get(profile.projectId) || [];
+      existing.push(profile);
+      byProject.set(profile.projectId, existing);
+    }
+  }
+
+  return { global, byProject };
+}
 
 interface Props {
   isOpen: boolean;
@@ -300,51 +320,17 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
               {editingProfile ? (
                 <ProfileEditor
                   profile={editingProfile}
+                  projects={config.projects}
                   onSave={handleProfileSave}
                   onCancel={() => setEditingProfile(null)}
                 />
               ) : (
-                <div className="flex flex-col gap-2">
-                  {config.profiles.map((profile) => (
-                    <div
-                      key={profile.id}
-                      className="flex justify-between items-center px-3 py-2.5 bg-muted rounded-md border border-border"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: profile.color }}
-                        />
-                        <div>
-                          <div className="text-xs font-medium text-foreground">
-                            {profile.name}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">
-                            {profile.command || "Default shell"}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 px-2 text-[10px]"
-                          onClick={() => setEditingProfile(profile)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          className="h-6 w-6"
-                          onClick={() => handleProfileDelete(profile.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ProfileList
+                  profiles={config.profiles}
+                  projects={config.projects}
+                  onEdit={setEditingProfile}
+                  onDelete={handleProfileDelete}
+                />
               )}
             </div>
           </TabsContent>
@@ -512,10 +498,12 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
 
 function ProfileEditor({
   profile,
+  projects,
   onSave,
   onCancel,
 }: {
   profile: TerminalProfile;
+  projects: ProjectConfig[];
   onSave: (p: TerminalProfile) => void;
   onCancel: () => void;
 }) {
@@ -525,6 +513,7 @@ function ProfileEditor({
   const [scrollback, setScrollback] = useState<string>(
     profile.scrollback?.toString() || ""
   );
+  const [projectId, setProjectId] = useState<string>(profile.projectId || "_global");
 
   function handleSave() {
     if (!name.trim()) return;
@@ -535,6 +524,7 @@ function ProfileEditor({
       command: command.trim() || undefined,
       color,
       scrollback: scrollbackNum && scrollbackNum >= 1000 ? scrollbackNum : undefined,
+      projectId: projectId === "_global" ? undefined : projectId,
     });
   }
 
@@ -563,6 +553,28 @@ function ProfileEditor({
           placeholder="e.g., npm run dev"
         />
       </label>
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          Scope
+        </span>
+        <Select value={projectId} onValueChange={setProjectId}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Global (all projects)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_global">Global (all projects)</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-[10px] text-muted-foreground">
+          Project-scoped profiles only appear for that project
+        </span>
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -611,6 +623,112 @@ function ProfileEditor({
         </Button>
         <Button size="sm" onClick={handleSave}>
           Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ProfileList({
+  profiles,
+  projects,
+  onEdit,
+  onDelete,
+}: {
+  profiles: TerminalProfile[];
+  projects: ProjectConfig[];
+  onEdit: (profile: TerminalProfile) => void;
+  onDelete: (profileId: string) => void;
+}) {
+  const { global, byProject } = groupProfilesByProject(profiles);
+
+  // Get projects that have profiles, in the order they appear in the projects list
+  const projectsWithProfiles = projects.filter((p) => byProject.has(p.id));
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Global profiles */}
+      {global.length > 0 && (
+        <div>
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Global
+          </h4>
+          <div className="flex flex-col gap-1.5">
+            {global.map((profile) => (
+              <ProfileItem
+                key={profile.id}
+                profile={profile}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Project-scoped profiles */}
+      {projectsWithProfiles.map((project) => (
+        <div key={project.id}>
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {project.name}
+          </h4>
+          <div className="flex flex-col gap-1.5">
+            {byProject.get(project.id)?.map((profile) => (
+              <ProfileItem
+                key={profile.id}
+                profile={profile}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProfileItem({
+  profile,
+  onEdit,
+  onDelete,
+}: {
+  profile: TerminalProfile;
+  onEdit: (profile: TerminalProfile) => void;
+  onDelete: (profileId: string) => void;
+}) {
+  return (
+    <div className="flex justify-between items-center px-3 py-2.5 bg-muted rounded-md border border-border">
+      <div className="flex items-center gap-2.5">
+        <span
+          className="w-3 h-3 rounded-full shrink-0"
+          style={{ backgroundColor: profile.color }}
+        />
+        <div>
+          <div className="text-xs font-medium text-foreground">
+            {profile.name}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {profile.command || "Default shell"}
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-[10px]"
+          onClick={() => onEdit(profile)}
+        >
+          Edit
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="h-6 w-6"
+          onClick={() => onDelete(profile.id)}
+        >
+          <X className="h-3 w-3" />
         </Button>
       </div>
     </div>

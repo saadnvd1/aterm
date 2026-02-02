@@ -10,6 +10,7 @@ export interface TerminalProfile {
   icon?: string;
   type?: ProfileType; // Defaults to "terminal"
   scrollback?: number; // Lines to keep in buffer (overrides global default)
+  projectId?: string; // If set, profile is scoped to this project; otherwise global
 }
 
 // Default profiles that come with aTerm
