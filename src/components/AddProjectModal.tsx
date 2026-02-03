@@ -255,6 +255,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
               validatingPath={validatingPath}
               pathValid={pathValid}
               onValidatePath={validateRemotePath}
+              className="mt-3.5"
             />
           </TabsContent>
 
@@ -321,6 +322,7 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
                 validatingPath={validatingPath}
                 pathValid={pathValid}
                 onValidatePath={validateRemotePath}
+                className="mt-3.5"
               />
             </div>
           </TabsContent>

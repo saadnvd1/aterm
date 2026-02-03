@@ -22,6 +22,7 @@ export interface RemoteExecutionSectionProps {
   validatingPath: boolean;
   pathValid: boolean | null;
   onValidatePath: () => void;
+  className?: string;
 }
 
 export function RemoteExecutionSection({
@@ -35,6 +36,7 @@ export function RemoteExecutionSection({
   validatingPath,
   pathValid,
   onValidatePath,
+  className,
 }: RemoteExecutionSectionProps) {
   if (sshConnections.length === 0) {
     return null;
@@ -43,7 +45,7 @@ export function RemoteExecutionSection({
   const selectedConnection = sshConnections.find((c) => c.id === sshConnectionId);
 
   return (
-    <div className="border border-border rounded-lg mt-3.5">
+    <div className={cn("border border-border rounded-lg", className)}>
       <button
         type="button"
         onClick={() => onRemoteOpenChange(!remoteOpen)}

@@ -5,3 +5,4 @@ export { useKeyboardShortcuts } from "./useKeyboardShortcuts";
 export { useTerminalInstance, fitPreservingScroll } from "./useTerminalInstance";
 export { useTerminalKeyboard } from "./useTerminalKeyboard";
 export { useLayoutDragDrop } from "./useLayoutDragDrop";
+export { useRemoteValidation } from "./useRemoteValidation";
