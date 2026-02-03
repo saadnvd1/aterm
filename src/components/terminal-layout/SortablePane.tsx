@@ -99,7 +99,9 @@ export function SortablePane({
   // Tracks if: profile is AI agent OR patterns detected (for shells running AI)
   const handleStatusChange = useCallback(
     (event: import("../../addons/StatusAddon").StatusChangeEvent) => {
+      console.log("[SortablePane] handleStatusChange", paneId, "isProfileAgent:", isProfileAgent, "event.isAgent:", event.isAgent, "status:", event.status);
       if (!isProfileAgent && !event.isAgent) return;
+      console.log("[SortablePane] updating pane status", `${project.id}-${paneId}`, event.status);
       updatePaneStatus(`${project.id}-${paneId}`, project.id, event.status);
     },
     [updatePaneStatus, project.id, paneId, isProfileAgent]

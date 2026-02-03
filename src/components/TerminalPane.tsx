@@ -229,6 +229,7 @@ export function TerminalPane({
 
     // Set up status change listener
     const statusDisposable = statusAddon.onStatusChange((event) => {
+      console.log("[TerminalPane] status change", id, "status:", event.status, "isAgent:", event.isAgent);
       setPaneStatus(event.status);
       if (event.isAgent) {
         setIsAgentPane(true);

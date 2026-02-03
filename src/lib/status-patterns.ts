@@ -61,6 +61,7 @@ export const WAITING_PATTERNS = [
 export function checkBusyIndicators(content: string): boolean {
   const lines = content.split("\n");
   const recentContent = lines.slice(-10).join("\n").toLowerCase();
+  const recentContentOriginal = lines.slice(-10).join("\n"); // Keep original case for some checks
 
   // Check text indicators
   if (BUSY_INDICATORS.some((ind) => recentContent.includes(ind))) {
@@ -72,6 +73,16 @@ export function checkBusyIndicators(content: string): boolean {
     recentContent.includes("tokens") &&
     WHIMSICAL_WORDS.some((w) => recentContent.includes(w))
   ) {
+    return true;
+  }
+
+  // Check for new Claude Code format: "· Swirling…" (dot + whimsical word + ellipsis)
+  // Pattern: · followed by capitalized whimsical word and ellipsis
+  if (WHIMSICAL_WORDS.some((w) => {
+    const capitalized = w.charAt(0).toUpperCase() + w.slice(1);
+    return recentContentOriginal.includes(`· ${capitalized}…`) ||
+           recentContentOriginal.includes(`${capitalized}…`);
+  })) {
     return true;
   }
 
