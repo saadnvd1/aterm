@@ -63,6 +63,7 @@ export class StatusAddon implements ITerminalAddon {
 
   activate(terminal: Terminal): void {
     this.terminal = terminal;
+    console.log("[StatusAddon] ACTIVATED", this.paneId);
 
     // Listen for data writes (activity detection)
     const dataDisposable = terminal.onData(() => {
@@ -170,7 +171,10 @@ export class StatusAddon implements ITerminalAddon {
    * Check and update status based on current terminal state
    */
   private checkStatus(): void {
-    if (!this.terminal) return;
+    if (!this.terminal) {
+      console.log("[StatusAddon] checkStatus - no terminal", this.paneId);
+      return;
+    }
 
     const content = this.getBufferContent();
     const now = Date.now();
