@@ -97,7 +97,10 @@ export function TerminalPane({
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [paneStatus, setPaneStatus] = useState<PaneStatus>("idle");
-  const [isAgentPane, setIsAgentPane] = useState(isProfileAgent);
+  const [detectedAsAgent, setDetectedAsAgent] = useState(false);
+
+  // Derive isAgentPane from profile config OR pattern detection
+  const isAgentPane = isProfileAgent || detectedAsAgent;
 
   // Keep refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -232,7 +235,7 @@ export function TerminalPane({
       console.log("[TerminalPane] status change", id, "status:", event.status, "isAgent:", event.isAgent);
       setPaneStatus(event.status);
       if (event.isAgent) {
-        setIsAgentPane(true);
+        setDetectedAsAgent(true);
       }
       onStatusChangeRef.current?.(event);
     });
