@@ -1,7 +1,8 @@
 # Notifications & Session Status Detection
 
-Status: **Planned**
+Status: **Implemented**
 Created: 2026-02-02
+Implemented: 2026-02-02
 
 ## Overview
 

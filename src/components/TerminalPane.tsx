@@ -7,6 +7,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
+import { StatusAddon, type PaneStatus } from "../addons/StatusAddon";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-shell";
@@ -49,7 +50,11 @@ interface Props {
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isProjectActive?: boolean;
+  onStatusChange?: (status: PaneStatus) => void;
 }
+
+// Re-export PaneStatus type for consumers
+export type { PaneStatus };
 
 export function TerminalPane({
   id,
@@ -73,22 +78,27 @@ export function TerminalPane({
   canClose,
   dragHandleProps,
   isProjectActive = true,
+  onStatusChange,
 }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
+  const statusAddonRef = useRef<StatusAddon | null>(null);
   const onToggleMaximizeRef = useRef(onToggleMaximize);
   const onFocusRef = useRef(onFocus);
+  const onStatusChangeRef = useRef(onStatusChange);
 
   const [fontSize, setFontSize] = useState(savedFontSize ?? defaultFontSize);
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [paneStatus, setPaneStatus] = useState<PaneStatus>("idle");
 
   // Keep refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;
   onFocusRef.current = onFocus;
+  onStatusChangeRef.current = onStatusChange;
 
   // Main terminal setup effect
   useEffect(() => {
@@ -100,6 +110,7 @@ export function TerminalPane({
     let fitAddon: FitAddon;
     let searchAddon: SearchAddon;
     let serializeAddon: SerializeAddon;
+    let statusAddon: StatusAddon;
     let isNewInstance = false;
 
     if (instance) {
@@ -108,6 +119,7 @@ export function TerminalPane({
       fitAddon = instance.fitAddon;
       searchAddon = instance.searchAddon;
       serializeAddon = instance.serializeAddon;
+      statusAddon = instance.statusAddon;
 
       if (terminal.element && containerRef.current) {
         containerRef.current.appendChild(terminal.element);
@@ -151,6 +163,10 @@ export function TerminalPane({
 
       serializeAddon = new SerializeAddon();
       terminal.loadAddon(serializeAddon);
+
+      // Status addon for session status detection
+      statusAddon = new StatusAddon(id);
+      terminal.loadAddon(statusAddon);
 
       // Custom key event handler
       terminal.attachCustomKeyEventHandler((e) => {
@@ -204,7 +220,14 @@ export function TerminalPane({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
+    statusAddonRef.current = statusAddon;
     serializeRefs.set(id, () => serializeAddon.serialize());
+
+    // Set up status change listener
+    const statusDisposable = statusAddon.onStatusChange((event) => {
+      setPaneStatus(event.status);
+      onStatusChangeRef.current?.(event.status);
+    });
 
     // Fit terminal
     requestAnimationFrame(() => {
@@ -274,6 +297,7 @@ export function TerminalPane({
       fitAddon,
       searchAddon,
       serializeAddon,
+      statusAddon,
       unlisten: unlistenFn || instance?.unlisten || null,
     });
 
@@ -281,6 +305,7 @@ export function TerminalPane({
       clearTimeout(resizeTimeout);
       terminal.element?.removeEventListener("click", handleTerminalClick);
       resizeObserver.disconnect();
+      statusDisposable.dispose();
     };
   }, [id, cwd, command]);
 
@@ -413,6 +438,7 @@ export function TerminalPane({
         triggerRename={triggerRename}
         onTriggerRenameComplete={onTriggerRenameComplete}
         dragHandleProps={dragHandleProps}
+        status={paneStatus}
       />
       <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />
       {isSearchOpen && (

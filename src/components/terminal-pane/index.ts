@@ -2,6 +2,7 @@ export { SearchOverlay } from "./SearchOverlay";
 export { DragDropOverlay } from "./DragDropOverlay";
 export {
   killPty,
+  getStatusAddon,
   serializeRefs,
   spawnedPtys,
   terminalInstances,
@@ -10,4 +11,6 @@ export {
   MAX_FONT_SIZE,
   DEFAULT_SCROLLBACK,
   type TerminalInstance,
+  type PaneStatus,
+  type StatusChangeEvent,
 } from "./terminal-instance";

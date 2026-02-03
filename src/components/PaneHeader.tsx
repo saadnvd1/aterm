@@ -2,6 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import type { PaneStatus } from "../addons/StatusAddon";
+
+// Status indicator colors
+const STATUS_COLORS: Record<PaneStatus, string> = {
+  idle: "bg-muted-foreground/50",
+  running: "bg-blue-500",
+  waiting: "bg-yellow-500",
+};
 
 // Calculate relative luminance to determine if text should be light or dark
 function getLuminance(hex: string): number {
@@ -37,6 +45,7 @@ interface Props {
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   titleExtra?: React.ReactNode;
   actions?: React.ReactNode;
+  status?: PaneStatus;
 }
 
 export function PaneHeader({
@@ -53,6 +62,7 @@ export function PaneHeader({
   dragHandleProps,
   titleExtra,
   actions,
+  status,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -159,6 +169,16 @@ export function PaneHeader({
           >
             {subtitle}
           </span>
+        )}
+        {status && (
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full shrink-0 transition-colors",
+              STATUS_COLORS[status],
+              status === "waiting" && "animate-pulse"
+            )}
+            title={`Status: ${status}`}
+          />
         )}
         {actions}
         {canClose && (

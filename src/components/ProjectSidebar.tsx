@@ -9,6 +9,15 @@ import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
 import { SettingsModal } from "./SettingsModal";
 import { ProjectSettingsModal } from "./ProjectSettingsModal";
+import { useSession } from "../context/SessionContext";
+import type { PaneStatus } from "../addons/StatusAddon";
+
+// Status badge colors
+const STATUS_COLORS: Record<PaneStatus, string> = {
+  idle: "bg-muted-foreground/40",
+  running: "bg-blue-500",
+  waiting: "bg-yellow-500",
+};
 
 // Calculate relative luminance to determine if text should be light or dark
 function getLuminance(hex: string): number {
@@ -56,6 +65,7 @@ export function ProjectSidebar({
     y: number;
   } | null>(null);
   const [editingProject, setEditingProject] = useState<ProjectConfig | null>(null);
+  const { getProjectStatus } = useSession();
 
   const fuse = useMemo(
     () =>
@@ -164,6 +174,8 @@ export function ProjectSidebar({
               const isSelected = selectedProject?.id === project.id;
               const useColorBg = isSelected && project.color;
               const useLightText = useColorBg ? shouldUseLightText(project.color!) : false;
+              const projectStatus = getProjectStatus(project.id);
+              const showStatusBadge = projectStatus.aggregateStatus !== "idle";
               return (
                 <button
                   key={project.id}
@@ -203,6 +215,27 @@ export function ProjectSidebar({
                       {layout && ` · ${layout.name}`}
                     </span>
                   </div>
+                  {showStatusBadge && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span
+                        className={cn(
+                          "w-2 h-2 rounded-full",
+                          STATUS_COLORS[projectStatus.aggregateStatus],
+                          projectStatus.aggregateStatus === "waiting" && "animate-pulse"
+                        )}
+                      />
+                      {projectStatus.waitingCount > 0 && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-medium",
+                            useLightText ? "text-white/80" : "text-muted-foreground"
+                          )}
+                        >
+                          {projectStatus.waitingCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </button>
               );
             })

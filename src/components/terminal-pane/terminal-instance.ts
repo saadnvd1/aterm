@@ -3,6 +3,10 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
+import { StatusAddon, type PaneStatus, type StatusChangeEvent } from "../../addons/StatusAddon";
+
+// Re-export types for convenience
+export type { PaneStatus, StatusChangeEvent };
 
 // Track spawned PTYs globally so we don't respawn on remount (e.g., after drag)
 export const spawnedPtys = new Set<string>();
@@ -13,6 +17,7 @@ export interface TerminalInstance {
   fitAddon: FitAddon;
   searchAddon: SearchAddon;
   serializeAddon: SerializeAddon;
+  statusAddon: StatusAddon;
   unlisten: (() => void) | null;
 }
 
@@ -33,10 +38,19 @@ export function killPty(id: string) {
   const instance = terminalInstances.get(id);
   if (instance) {
     instance.unlisten?.();
+    instance.statusAddon.dispose();
     instance.terminal.dispose();
     terminalInstances.delete(id);
   }
   serializeRefs.delete(id);
+}
+
+/**
+ * Get status addon for a pane (for external status queries)
+ */
+export function getStatusAddon(id: string): StatusAddon | null {
+  const instance = terminalInstances.get(id);
+  return instance?.statusAddon ?? null;
 }
 
 /**

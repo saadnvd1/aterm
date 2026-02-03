@@ -20,6 +20,7 @@ import { GitPane } from "../git/GitPane";
 import { updatePaneName } from "../../lib/layouts";
 import { PROVIDERS } from "../../lib/providers";
 import { PaneEdgeDropZone } from "./DropZones";
+import { useSession } from "../../context/SessionContext";
 import type { PaneProps } from "./types";
 
 // Build command with auto-approve flag if skipPermissions is enabled
@@ -81,6 +82,15 @@ export function SortablePane({
 }: SortablePaneProps) {
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { updatePaneStatus } = useSession();
+
+  // Status change handler - reports to SessionContext
+  const handleStatusChange = useCallback(
+    (status: import("../../addons/StatusAddon").PaneStatus) => {
+      updatePaneStatus(`${project.id}-${paneId}`, project.id, status);
+    },
+    [updatePaneStatus, project.id, paneId]
+  );
 
   const {
     attributes,
@@ -204,6 +214,7 @@ export function SortablePane({
           canClose={canClose}
           dragHandleProps={{ ...attributes, ...listeners }}
           isProjectActive={isProjectActive}
+          onStatusChange={handleStatusChange}
         />
       )}
       {isMaximized && (

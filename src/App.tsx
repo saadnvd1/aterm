@@ -6,6 +6,7 @@ import { ProjectSidebar } from "./components/ProjectSidebar";
 import { TerminalLayout } from "./components/TerminalLayout";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
 import { StatusBar } from "./components/StatusBar";
+import { NotificationManager } from "./components/NotificationManager";
 import { AppConfig, DEFAULT_CONFIG, ProjectConfig } from "./lib/config";
 import type { Layout } from "./lib/layouts";
 import appIcon from "./assets/icon.png";
@@ -313,6 +314,7 @@ export default function App() {
         onConfirm={handleExitConfirm}
         onCancel={handleExitCancel}
       />
+      <NotificationManager />
       <div style={styles.mainArea}>
         {sidebarVisible && (
           <ProjectSidebar
