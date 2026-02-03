@@ -11,6 +11,8 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-ask",
-    "fs:allow-write-text-file"
+    "fs:allow-write-text-file",
+    "clipboard-manager:allow-read",
+    "clipboard-manager:allow-write"
   ]
 }

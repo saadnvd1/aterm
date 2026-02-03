@@ -9,6 +9,7 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-shell";
+import { TauriClipboardProvider } from "../lib/clipboard-provider";
 import {
   spawnedPtys,
   terminalInstances,
@@ -128,6 +129,10 @@ export function useTerminalInstance({
   const onFocusRef = useRef(onFocus);
   const onInitialInputSentRef = useRef(onInitialInputSent);
 
+  // Track injection state in refs to persist across effect re-runs
+  const remoteCommandSentRef = useRef(false);
+  const initialPromptSentRef = useRef(false);
+
   // Keep refs updated
   onToggleMaximizeRef.current = onToggleMaximize;
   onFocusRef.current = onFocus;
@@ -189,7 +194,8 @@ export function useTerminalInstance({
       searchAddon = new SearchAddon();
       terminal.loadAddon(searchAddon);
 
-      const clipboardAddon = new ClipboardAddon();
+      // Use Tauri clipboard provider for OSC 52 support (bypasses browser restrictions)
+      const clipboardAddon = new ClipboardAddon(undefined, TauriClipboardProvider);
       terminal.loadAddon(clipboardAddon);
 
       serializeAddon = new SerializeAddon();
@@ -258,6 +264,9 @@ export function useTerminalInstance({
     // Spawn PTY if needed
     if (!spawnedPtys.has(id)) {
       spawnedPtys.add(id);
+      // Reset injection flags for new terminals
+      remoteCommandSentRef.current = false;
+      initialPromptSentRef.current = false;
       if (isRemote && sshHost && sshUser && tmuxSession) {
         // Spawn remote PTY via SSH + tmux
         invoke("spawn_remote_pty", {
@@ -282,12 +291,10 @@ export function useTerminalInstance({
     // Single-stage for local: just initialInput after CLI is ready
     let silenceTimer: number | null = null;
     let fallbackTimer: number | null = null;
-    let remoteCommandSent = false;
-    let initialPromptSent = false;
 
     const sendRemoteCommand = () => {
-      if (remoteCommandSent || !remoteCommand) return;
-      remoteCommandSent = true;
+      if (remoteCommandSentRef.current || !remoteCommand) return;
+      remoteCommandSentRef.current = true;
 
       invoke("write_pty", { id, data: remoteCommand })
         .then(() => new Promise(resolve => setTimeout(resolve, 50)))
@@ -296,8 +303,8 @@ export function useTerminalInstance({
     };
 
     const sendInitialPrompt = () => {
-      if (initialPromptSent || !initialInput) return;
-      initialPromptSent = true;
+      if (initialPromptSentRef.current || !initialInput) return;
+      initialPromptSentRef.current = true;
       if (silenceTimer) clearTimeout(silenceTimer);
       if (fallbackTimer) clearTimeout(fallbackTimer);
 
@@ -362,14 +369,14 @@ export function useTerminalInstance({
           const text = new TextDecoder().decode(rawData);
 
           // For remote: first detect shell ready, then CLI ready
-          if (remoteCommand && !remoteCommandSent) {
+          if (remoteCommand && !remoteCommandSentRef.current) {
             // Shell prompt detection ($ or % or >)
             const shellReady = /[$%>]\s*$/.test(stripAnsi(text));
             if (shellReady) {
               if (silenceTimer) clearTimeout(silenceTimer);
               silenceTimer = window.setTimeout(() => sendRemoteCommand(), 200);
             }
-          } else if (remoteCommand && remoteCommandSent && initialInput && !initialPromptSent) {
+          } else if (remoteCommand && remoteCommandSentRef.current && initialInput && !initialPromptSentRef.current) {
             // CLI idle detection for sending prompt
             if (silenceTimer) clearTimeout(silenceTimer);
             silenceTimer = window.setTimeout(() => sendInitialPrompt(), 1200);
@@ -377,7 +384,7 @@ export function useTerminalInstance({
               if (silenceTimer) clearTimeout(silenceTimer);
               silenceTimer = window.setTimeout(() => sendInitialPrompt(), 250);
             }
-          } else if (!remoteCommand && initialInput && !initialPromptSent) {
+          } else if (!remoteCommand && initialInput && !initialPromptSentRef.current) {
             // Local: standard idle detection
             if (silenceTimer) clearTimeout(silenceTimer);
             silenceTimer = window.setTimeout(() => sendInitialPrompt(), 1200);

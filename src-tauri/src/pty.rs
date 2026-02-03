@@ -186,10 +186,12 @@ pub fn spawn_remote_pty(
     // -c: start directory
     // Note: We don't pass the command to tmux directly because tmux exits when the command finishes.
     // Instead, we start a shell and let initialInput inject the command.
-    // Enable set-clipboard for OSC 52 clipboard integration (allows copying via terminal escape sequences)
-    // Enable mouse for proper text selection in tmux
+    // Enable set-clipboard for OSC 52 clipboard integration (xterm.js ClipboardAddon handles OSC 52)
+    // Enable mouse for scrolling and text selection in tmux
     let tmux_cmd = format!(
-        "tmux set-option -g set-clipboard on \\; set-option -g mouse on \\; new-session -A -s '{}' -c '{}'",
+        "tmux set-option -g set-clipboard on \\; \
+         set-option -g mouse on \\; \
+         new-session -A -s '{}' -c '{}'",
         tmux_session, remote_cwd
     );
 
