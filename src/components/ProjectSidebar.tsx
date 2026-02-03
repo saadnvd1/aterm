@@ -41,6 +41,7 @@ interface Props {
   onAddGitPane: () => void;
   onCreateTask: (project: ProjectConfig) => void;
   onDeleteTask: (project: ProjectConfig, task: Task) => void;
+  onDetachProject?: (project: ProjectConfig) => void;
 }
 
 export function ProjectSidebar({
@@ -55,6 +56,7 @@ export function ProjectSidebar({
   onAddGitPane,
   onCreateTask,
   onDeleteTask,
+  onDetachProject,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -305,6 +307,17 @@ export function ProjectSidebar({
             >
               Restore Window Arrangement
             </button>
+            {onDetachProject && (
+              <button
+                className="w-full px-3 py-2 bg-transparent border-none rounded text-foreground text-xs cursor-pointer text-left transition-colors hover:bg-accent"
+                onClick={() => {
+                  onDetachProject(contextMenu.project);
+                  setContextMenu(null);
+                }}
+              >
+                Open in New Window
+              </button>
+            )}
             <div className="h-px bg-border my-1" />
             <button
               className="w-full px-3 py-2 bg-transparent border-none rounded text-destructive text-xs cursor-pointer text-left transition-colors hover:bg-destructive/10"

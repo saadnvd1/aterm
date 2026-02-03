@@ -33,6 +33,7 @@ interface Props {
   onPersistentLayoutChange?: (layout: Layout) => void;
   initialInputByPaneId?: Record<string, string | undefined>;
   onInitialInputSentByPaneId?: Record<string, (() => void) | undefined>;
+  onDetachPane?: (paneId: string) => void;
   isProjectActive?: boolean;
 }
 
@@ -48,6 +49,7 @@ export function TerminalLayout({
   onPersistentLayoutChange,
   initialInputByPaneId,
   onInitialInputSentByPaneId,
+  onDetachPane,
   isProjectActive = true,
 }: Props) {
   const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
@@ -490,6 +492,7 @@ export function TerminalLayout({
                 renamingPaneId={renamingPaneId}
                 onRenamingComplete={() => setRenamingPaneId(null)}
                 onStartRename={(paneId) => setRenamingPaneId(paneId)}
+                onDetachPane={onDetachPane}
                 activeDragId={activeDragId}
                 isProjectActive={isProjectActive}
               />

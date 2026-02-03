@@ -9,6 +9,7 @@ mod file_ops;
 mod git;
 mod iterm;
 mod pty;
+mod window;
 mod worktree;
 
 use config::{load_config, save_config};
@@ -41,6 +42,7 @@ use pty::{
     write_pty,
     PtyMap,
 };
+use window::{close_detached_window, create_detached_window, list_detached_windows};
 use worktree::{create_worktree, list_git_branches, list_worktrees, remove_worktree};
 
 // ============================================================================
@@ -87,6 +89,9 @@ pub fn run() {
             get_active_pty_count,
             kill_all_ptys,
             force_exit,
+            create_detached_window,
+            close_detached_window,
+            list_detached_windows,
         ])
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -151,10 +156,14 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Prevent default close behavior
-                api.prevent_close();
-                // Emit event to frontend to show confirmation dialog
-                let _ = window.emit("exit-requested", ());
+                // Only show confirmation dialog for main window
+                if window.label() == "main" {
+                    // Prevent default close behavior
+                    api.prevent_close();
+                    // Emit event to frontend to show confirmation dialog
+                    let _ = window.emit("exit-requested", ());
+                }
+                // Detached windows close normally without confirmation
             }
         })
         .run(tauri::generate_context!())

@@ -3,10 +3,15 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": [
-    "main"
+    "main",
+    "pane-*",
+    "project-*"
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-close",
+    "core:window:allow-set-title",
+    "core:window:allow-set-size",
     "shell:allow-open",
     "dialog:allow-open",
     "dialog:allow-save",

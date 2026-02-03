@@ -29,6 +29,7 @@ export function RowWithResizer({
   renamingPaneId,
   onRenamingComplete,
   onStartRename,
+  onDetachPane,
   activeDragId,
   isProjectActive,
 }: RowProps) {
@@ -119,6 +120,7 @@ export function RowWithResizer({
               triggerRename={renamingPaneId === pane.id}
               onTriggerRenameComplete={onRenamingComplete}
               onStartRename={() => onStartRename(pane.id)}
+              onDetachPane={onDetachPane ? () => onDetachPane(pane.id) : undefined}
               activeDragId={activeDragId}
               isProjectActive={isProjectActive}
             />

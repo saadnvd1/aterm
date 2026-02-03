@@ -9,6 +9,7 @@ import { StatusBar } from "./components/StatusBar";
 import { CreateTaskModal } from "./components/CreateTaskModal";
 import { TaskView } from "./components/TaskView";
 import { useConfig, useTasks, useLayouts, useKeyboardShortcuts } from "./hooks";
+import { useDetachedWindows } from "./hooks/useDetachedWindows";
 import type { ProjectConfig } from "./lib/config";
 import appIcon from "./assets/icon.png";
 
@@ -57,6 +58,8 @@ export default function App() {
     cleanupRemovedProjects,
   } = useLayouts({ config, updateConfig, selectedProject });
 
+  const { detachPane, detachProject } = useDetachedWindows();
+
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [activePtyCount, setActivePtyCount] = useState(0);
   const [createTaskProject, setCreateTaskProject] = useState<ProjectConfig | null>(null);
@@ -72,6 +75,38 @@ export default function App() {
     onSelectProject: handleSelectProject,
     onToggleSidebar: () => setSidebarVisible((prev) => !prev),
   });
+
+  // Handler for detaching panes to separate windows
+  const handleDetachPane = useCallback(
+    (project: ProjectConfig, paneId: string, layout: import("./lib/layouts").Layout) => {
+      const pane = layout.rows.flatMap((r) => r.panes).find((p) => p.id === paneId);
+      if (!pane) return;
+
+      const profile = config.profiles.find((p) => p.id === pane.profileId);
+      if (!profile) return;
+
+      const terminalId = `${project.id}-${paneId}`;
+      detachPane(paneId, terminalId, project, profile);
+    },
+    [config.profiles, detachPane]
+  );
+
+  // Handler for detaching entire projects to separate windows
+  const handleDetachProject = useCallback(
+    (project: ProjectConfig) => {
+      const layout = runtimeLayouts[project.id];
+      if (!layout) return;
+
+      detachProject(
+        project,
+        layout,
+        config.profiles,
+        config.defaultFontSize ?? 13,
+        config.defaultScrollback ?? 10000
+      );
+    },
+    [config.profiles, config.defaultFontSize, config.defaultScrollback, detachProject, runtimeLayouts]
+  );
 
   // Set window title in dev mode
   useEffect(() => {
@@ -166,6 +201,7 @@ export default function App() {
             onAddGitPane={handleAddGitPane}
             onCreateTask={(project) => setCreateTaskProject(project)}
             onDeleteTask={handleDeleteTask}
+            onDetachProject={handleDetachProject}
           />
         )}
         <div style={styles.main}>
@@ -202,6 +238,7 @@ export default function App() {
                     onPaneFontSizeChange={handlePaneFontSizeChange}
                     onLayoutChange={(newLayout) => handleRuntimeLayoutChange(project.id, newLayout)}
                     onPersistentLayoutChange={(newLayout) => handlePersistentLayoutChange(project.id, newLayout)}
+                    onDetachPane={(paneId) => handleDetachPane(project, paneId, layout)}
                     isProjectActive={isActive}
                   />
                 </div>

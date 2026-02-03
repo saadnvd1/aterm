@@ -78,6 +78,7 @@ export function SortablePane({
   triggerRename,
   onTriggerRenameComplete,
   onStartRename,
+  onDetachPane,
   activeDragId,
   isProjectActive,
 }: SortablePaneProps) {
@@ -310,6 +311,11 @@ export function SortablePane({
               }
             }}>
               Save Output
+            </ContextMenuItem>
+          )}
+          {onDetachPane && (
+            <ContextMenuItem onClick={onDetachPane}>
+              Open in New Window
             </ContextMenuItem>
           )}
           {canClose && (

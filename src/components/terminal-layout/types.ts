@@ -28,6 +28,7 @@ export interface RowProps {
   renamingPaneId: string | null;
   onRenamingComplete: () => void;
   onStartRename: (paneId: string) => void;
+  onDetachPane?: (paneId: string) => void;
   activeDragId: string | null;
   isProjectActive: boolean;
 }
@@ -63,6 +64,7 @@ export interface PaneProps {
   triggerRename: boolean;
   onTriggerRenameComplete: () => void;
   onStartRename: () => void;
+  onDetachPane?: () => void;
   activeDragId: string | null;
   isProjectActive: boolean;
 }
