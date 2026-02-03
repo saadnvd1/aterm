@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { killPty } from "./TerminalPane";
 import { terminalInstances } from "./terminal-pane";
-import { RowWithResizer, RowDropZone } from "./terminal-layout";
+import { RowWithResizer, RowDropZone, MinimizedPanesDock } from "./terminal-layout";
 import type { ProjectConfig } from "../lib/config";
 import type { Layout, LayoutRow, LayoutPane } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
@@ -54,6 +54,7 @@ export function TerminalLayout({
 }: Props) {
   const [focusedPaneId, setFocusedPaneId] = useState<string | null>(null);
   const [maximizedPaneId, setMaximizedPaneId] = useState<string | null>(null);
+  const [minimizedPaneIds, setMinimizedPaneIds] = useState<Set<string>>(new Set());
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [renamingPaneId, setRenamingPaneId] = useState<string | null>(null);
 
@@ -69,20 +70,22 @@ export function TerminalLayout({
   // Get all pane IDs in order for cycling
   const allPaneIds = layout.rows.flatMap((row) => row.panes.map((p) => p.id));
 
-  // Cycle to next/previous pane
+  // Cycle to next/previous pane (skip minimized panes)
   function cyclePanes(direction: "next" | "prev") {
-    if (allPaneIds.length === 0) return;
+    // Only cycle through visible (non-minimized) panes
+    const visiblePaneIds = allPaneIds.filter((id) => !minimizedPaneIds.has(id));
+    if (visiblePaneIds.length === 0) return;
 
-    const currentIndex = focusedPaneId ? allPaneIds.indexOf(focusedPaneId) : -1;
+    const currentIndex = focusedPaneId ? visiblePaneIds.indexOf(focusedPaneId) : -1;
     let newIndex: number;
 
     if (direction === "next") {
-      newIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % allPaneIds.length;
+      newIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % visiblePaneIds.length;
     } else {
-      newIndex = currentIndex === -1 ? allPaneIds.length - 1 : (currentIndex - 1 + allPaneIds.length) % allPaneIds.length;
+      newIndex = currentIndex === -1 ? visiblePaneIds.length - 1 : (currentIndex - 1 + visiblePaneIds.length) % visiblePaneIds.length;
     }
 
-    const newPaneId = allPaneIds[newIndex];
+    const newPaneId = visiblePaneIds[newIndex];
     setFocusedPaneId(newPaneId);
 
     // If maximized, switch which pane is maximized
@@ -98,6 +101,50 @@ export function TerminalLayout({
       requestAnimationFrame(() => {
         instance.terminal.focus();
       });
+    }
+  }
+
+  // Minimize a pane
+  function minimizePane(paneId: string) {
+    // Can't minimize if it's the only visible pane
+    const visiblePaneCount = allPaneIds.filter((id) => !minimizedPaneIds.has(id)).length;
+    if (visiblePaneCount <= 1) return;
+
+    // If this pane is maximized, un-maximize first
+    if (maximizedPaneId === paneId) {
+      setMaximizedPaneId(null);
+    }
+
+    // If this pane is focused, focus another pane
+    if (focusedPaneId === paneId) {
+      const nextVisiblePane = allPaneIds.find((id) => id !== paneId && !minimizedPaneIds.has(id));
+      if (nextVisiblePane) {
+        setFocusedPaneId(nextVisiblePane);
+        const terminalId = `${project.id}-${nextVisiblePane}`;
+        const instance = terminalInstances.get(terminalId);
+        if (instance) {
+          requestAnimationFrame(() => instance.terminal.focus());
+        }
+      }
+    }
+
+    setMinimizedPaneIds((prev) => new Set(prev).add(paneId));
+  }
+
+  // Restore a minimized pane
+  function restorePane(paneId: string) {
+    setMinimizedPaneIds((prev) => {
+      const next = new Set(prev);
+      next.delete(paneId);
+      return next;
+    });
+
+    // Focus the restored pane
+    setFocusedPaneId(paneId);
+    const terminalId = `${project.id}-${paneId}`;
+    const instance = terminalInstances.get(terminalId);
+    if (instance) {
+      requestAnimationFrame(() => instance.terminal.focus());
     }
   }
 
@@ -128,6 +175,15 @@ export function TerminalLayout({
         return;
       }
 
+      // Cmd+Shift+M - minimize focused pane
+      if (e.shiftKey && e.metaKey && e.key === "m") {
+        e.preventDefault();
+        if (focusedPaneId) {
+          minimizePane(focusedPaneId);
+        }
+        return;
+      }
+
       if (e.metaKey && e.key === "d") {
         e.preventDefault();
         if (focusedPaneId) {
@@ -139,7 +195,7 @@ export function TerminalLayout({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focusedPaneId, maximizedPaneId, layout, allPaneIds]);
+  }, [focusedPaneId, maximizedPaneId, minimizedPaneIds, layout, allPaneIds]);
 
   // Listen for close-pane event from Rust (Cmd+W)
   useEffect(() => {
@@ -450,6 +506,16 @@ export function TerminalLayout({
     ? profiles.find((p) => p.id === activePane.profileId)
     : null;
 
+  // Get minimized panes with their profiles for the dock
+  const minimizedPanesWithProfiles = allPaneIds
+    .filter((id) => minimizedPaneIds.has(id))
+    .map((id) => {
+      const pane = layout.rows.flatMap((r) => r.panes).find((p) => p.id === id);
+      const profile = pane ? profiles.find((p) => p.id === pane.profileId) : null;
+      return pane && profile ? { pane, profile } : null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
   return (
     <DndContext
       sensors={sensors}
@@ -493,6 +559,8 @@ export function TerminalLayout({
                 onRenamingComplete={() => setRenamingPaneId(null)}
                 onStartRename={(paneId) => setRenamingPaneId(paneId)}
                 onDetachPane={onDetachPane}
+                onMinimizePane={minimizePane}
+                minimizedPaneIds={minimizedPaneIds}
                 activeDragId={activeDragId}
                 isProjectActive={isProjectActive}
               />
@@ -514,6 +582,11 @@ export function TerminalLayout({
           </div>
         )}
       </DragOverlay>
+
+      <MinimizedPanesDock
+        minimizedPanes={minimizedPanesWithProfiles}
+        onRestore={restorePane}
+      />
     </DndContext>
   );
 }

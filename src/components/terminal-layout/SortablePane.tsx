@@ -72,8 +72,10 @@ export function SortablePane({
   isFocused,
   isMaximized,
   isHidden,
+  isMinimized,
   onToggleMaximize,
   onClosePane,
+  onMinimize,
   canClose,
   triggerRename,
   onTriggerRenameComplete,
@@ -240,7 +242,7 @@ export function SortablePane({
             className={cn(
               "flex min-w-0 min-h-0 relative",
               isMaximized && "absolute inset-0 z-dropdown",
-              isHidden && "invisible"
+              (isHidden || isMinimized) && "hidden"
             )}
             style={{
               ...(!isMaximized ? { flex } : {}),
@@ -318,6 +320,11 @@ export function SortablePane({
               Open in New Window
             </ContextMenuItem>
           )}
+          {onMinimize && (
+            <ContextMenuItem onClick={onMinimize}>
+              Minimize
+            </ContextMenuItem>
+          )}
           {canClose && (
             <>
               <ContextMenuSeparator />
@@ -326,7 +333,7 @@ export function SortablePane({
           )}
         </ContextMenuContent>
       </ContextMenu>
-      {!isLast && !isMaximized && (
+      {!isLast && !isMaximized && !isMinimized && (
         <div
           className={cn(
             "w-1.5 cursor-col-resize bg-transparent transition-colors shrink-0",

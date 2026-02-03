@@ -29,6 +29,8 @@ export interface RowProps {
   onRenamingComplete: () => void;
   onStartRename: (paneId: string) => void;
   onDetachPane?: (paneId: string) => void;
+  onMinimizePane?: (paneId: string) => void;
+  minimizedPaneIds: Set<string>;
   activeDragId: string | null;
   isProjectActive: boolean;
 }
@@ -58,8 +60,10 @@ export interface PaneProps {
   isFocused: boolean;
   isMaximized: boolean;
   isHidden: boolean;
+  isMinimized: boolean;
   onToggleMaximize: () => void;
   onClosePane: () => void;
+  onMinimize?: () => void;
   canClose: boolean;
   triggerRename: boolean;
   onTriggerRenameComplete: () => void;

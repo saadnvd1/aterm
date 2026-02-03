@@ -30,6 +30,8 @@ export function RowWithResizer({
   onRenamingComplete,
   onStartRename,
   onDetachPane,
+  onMinimizePane,
+  minimizedPaneIds,
   activeDragId,
   isProjectActive,
 }: RowProps) {
@@ -121,6 +123,8 @@ export function RowWithResizer({
               onTriggerRenameComplete={onRenamingComplete}
               onStartRename={() => onStartRename(pane.id)}
               onDetachPane={onDetachPane ? () => onDetachPane(pane.id) : undefined}
+              onMinimize={onMinimizePane ? () => onMinimizePane(pane.id) : undefined}
+              isMinimized={minimizedPaneIds.has(pane.id)}
               activeDragId={activeDragId}
               isProjectActive={isProjectActive}
             />
