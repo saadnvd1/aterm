@@ -315,3 +315,187 @@ pub fn list_git_branches(project_path: String) -> Result<Vec<String>, String> {
     branches.sort();
     Ok(branches)
 }
+
+// ============================================================================
+// Remote Worktree Functions
+// ============================================================================
+
+fn build_ssh_args(host: &str, port: u16, user: &str, key_path: Option<&str>) -> Vec<String> {
+    let mut args = vec![
+        "-o".to_string(),
+        "BatchMode=yes".to_string(),
+        "-o".to_string(),
+        "ConnectTimeout=30".to_string(),
+        "-o".to_string(),
+        "StrictHostKeyChecking=accept-new".to_string(),
+        "-p".to_string(),
+        port.to_string(),
+    ];
+
+    if let Some(key) = key_path {
+        args.push("-i".to_string());
+        args.push(key.to_string());
+    }
+
+    args.push(format!("{}@{}", user, host));
+    args
+}
+
+fn run_remote_command(
+    host: &str,
+    port: u16,
+    user: &str,
+    key_path: Option<&str>,
+    command: &str,
+) -> Result<String, String> {
+    let mut args = build_ssh_args(host, port, user, key_path);
+    args.push(command.to_string());
+
+    let output = Command::new("ssh")
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to execute ssh: {}", e))?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Remote command failed: {}", stderr.trim()))
+    }
+}
+
+#[tauri::command]
+pub fn create_remote_worktree(
+    ssh_host: String,
+    ssh_port: u16,
+    ssh_user: String,
+    ssh_key_path: Option<String>,
+    remote_project_path: String,
+    task_name: String,
+    base_ref: Option<String>,
+) -> Result<WorktreeInfo, String> {
+    let key_path = ssh_key_path.as_deref();
+
+    // Verify the remote path is a git repo
+    let check_cmd = format!(
+        "cd '{}' && git rev-parse --is-inside-work-tree",
+        remote_project_path
+    );
+    let output = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &check_cmd)?;
+    if output.trim() != "true" {
+        return Err("Remote path is not a git repository".to_string());
+    }
+
+    // Get current branch if base_ref not specified
+    let base_ref = match base_ref {
+        Some(ref_) if !ref_.trim().is_empty() => ref_.trim().to_string(),
+        _ => {
+            let branch_cmd = format!("cd '{}' && git branch --show-current", remote_project_path);
+            let branch = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &branch_cmd)?;
+            let branch = branch.trim().to_string();
+            if branch.is_empty() { "HEAD".to_string() } else { branch }
+        }
+    };
+
+    // Get project name from path
+    let project_name = remote_project_path
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .ok_or_else(|| "Invalid project path".to_string())?
+        .to_string();
+
+    // Compute parent dir
+    let parent_dir = remote_project_path
+        .trim_end_matches('/')
+        .rsplit_once('/')
+        .map(|(parent, _)| parent)
+        .ok_or_else(|| "Invalid project path".to_string())?;
+
+    let worktrees_root = format!("{}/worktrees/{}", parent_dir, project_name);
+
+    // Create worktrees directory
+    let mkdir_cmd = format!("mkdir -p '{}'", worktrees_root);
+    run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &mkdir_cmd)?;
+
+    let slug = slugify_task_name(&task_name);
+
+    for attempt in 0..20 {
+        let suffix = generate_suffix(&format!("{}-{}", task_name, attempt));
+        let branch = format!("aterm/{}-{}", slug, suffix);
+        let worktree_path = format!("{}/{}-{}", worktrees_root, slug, suffix);
+
+        // Check if worktree path exists
+        let exists_cmd = format!("test -d '{}' && echo exists || echo not", worktree_path);
+        let exists = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &exists_cmd)?;
+        if exists.trim() == "exists" {
+            continue;
+        }
+
+        // Check if branch exists
+        let branch_check_cmd = format!(
+            "cd '{}' && git show-ref --verify --quiet refs/heads/{} && echo exists || echo not",
+            remote_project_path, branch
+        );
+        let branch_exists = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &branch_check_cmd)?;
+        if branch_exists.trim() == "exists" {
+            continue;
+        }
+
+        // Create worktree
+        let create_cmd = format!(
+            "cd '{}' && git worktree add -b '{}' '{}' '{}'",
+            remote_project_path, branch, worktree_path, base_ref
+        );
+        run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &create_cmd)?;
+
+        // Copy preserved files (.env*, .envrc, docker-compose.override.yml)
+        let copy_cmd = format!(
+            "cd '{}' && for f in .env* .envrc docker-compose.override.yml; do [ -f \"$f\" ] && cp \"$f\" '{}/' 2>/dev/null; done; true",
+            remote_project_path, worktree_path
+        );
+        let _ = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &copy_cmd);
+
+        return Ok(WorktreeInfo {
+            path: worktree_path,
+            branch,
+        });
+    }
+
+    Err("Failed to generate unique worktree path".to_string())
+}
+
+#[tauri::command]
+pub fn remove_remote_worktree(
+    ssh_host: String,
+    ssh_port: u16,
+    ssh_user: String,
+    ssh_key_path: Option<String>,
+    worktree_path: String,
+) -> Result<(), String> {
+    let key_path = ssh_key_path.as_deref();
+
+    // Get the git common dir
+    let common_dir_cmd = format!(
+        "cd '{}' && git rev-parse --git-common-dir",
+        worktree_path
+    );
+    let common_dir = run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &common_dir_cmd)?;
+    let common_dir = common_dir.trim();
+
+    // Handle relative paths
+    let git_dir = if common_dir.starts_with('/') {
+        common_dir.to_string()
+    } else {
+        format!("{}/{}", worktree_path, common_dir)
+    };
+
+    // Remove the worktree
+    let remove_cmd = format!(
+        "git --git-dir='{}' worktree remove --force '{}'",
+        git_dir, worktree_path
+    );
+    run_remote_command(&ssh_host, ssh_port, &ssh_user, key_path, &remove_cmd)?;
+
+    Ok(())
+}

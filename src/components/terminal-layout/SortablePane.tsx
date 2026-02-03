@@ -80,6 +80,7 @@ export function SortablePane({
   onStartRename,
   activeDragId,
   isProjectActive,
+  remoteExecution,
 }: SortablePaneProps) {
   const [isDraggingResize, setIsDraggingResize] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -208,6 +209,12 @@ export function SortablePane({
           canClose={canClose}
           dragHandleProps={{ ...attributes, ...listeners }}
           isProjectActive={isProjectActive}
+          isRemote={!!remoteExecution}
+          sshHost={remoteExecution?.sshHost}
+          sshPort={remoteExecution?.sshPort}
+          sshUser={remoteExecution?.sshUser}
+          sshKeyPath={remoteExecution?.sshKeyPath}
+          tmuxSession={remoteExecution?.tmuxSession}
         />
       )}
       {isMaximized && (

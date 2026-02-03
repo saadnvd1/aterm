@@ -9,6 +9,7 @@ mod file_ops;
 mod git;
 mod iterm;
 mod pty;
+mod ssh;
 mod worktree;
 
 use config::{load_config, save_config};
@@ -38,10 +39,15 @@ use pty::{
     kill_pty,
     resize_pty,
     spawn_pty,
+    spawn_remote_pty,
     write_pty,
     PtyMap,
 };
-use worktree::{create_worktree, list_git_branches, list_worktrees, remove_worktree};
+use ssh::{remote_command, remote_path_exists, test_ssh_connection};
+use worktree::{
+    create_remote_worktree, create_worktree, list_git_branches, list_worktrees,
+    remove_remote_worktree, remove_worktree,
+};
 
 // ============================================================================
 // App Entry Point
@@ -78,15 +84,21 @@ pub fn run() {
             get_iterm_profiles,
             create_worktree,
             remove_worktree,
+            create_remote_worktree,
+            remove_remote_worktree,
             list_worktrees,
             list_git_branches,
             spawn_pty,
+            spawn_remote_pty,
             write_pty,
             resize_pty,
             kill_pty,
             get_active_pty_count,
             kill_all_ptys,
             force_exit,
+            test_ssh_connection,
+            remote_command,
+            remote_path_exists,
         ])
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())

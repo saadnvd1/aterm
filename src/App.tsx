@@ -221,6 +221,7 @@ export default function App() {
       <CreateTaskModal
         isOpen={!!createTaskProject}
         project={createTaskProject}
+        sshConnections={config.sshConnections || []}
         onClose={() => setCreateTaskProject(null)}
         onTaskCreated={handleTaskCreated}
       />
@@ -265,6 +266,7 @@ function TaskViewContainer({
       task={selectedTask}
       layout={taskLayout}
       profiles={taskProfiles}
+      sshConnections={config.sshConnections || []}
       defaultFontSize={config.defaultFontSize ?? 13}
       defaultScrollback={config.defaultScrollback ?? 10000}
       paneFontSizes={taskPaneFontSizes}

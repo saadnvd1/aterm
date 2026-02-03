@@ -1,6 +1,7 @@
 import type { Layout } from "../../lib/layouts";
 import type { TerminalProfile } from "../../lib/profiles";
 import type { ProviderId } from "../../lib/providers";
+import type { SSHConnection } from "../../lib/ssh";
 
 export interface DirEntry {
   name: string;
@@ -15,6 +16,7 @@ export interface AddProjectModalProps {
   onProjectAdded: (project: import("../../lib/config").ProjectConfig) => void;
   layouts: Layout[];
   profiles: TerminalProfile[];
+  sshConnections: SSHConnection[];
 }
 
 export interface ProjectFormFieldsProps {

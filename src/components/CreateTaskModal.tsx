@@ -4,6 +4,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import type { ProjectConfig } from "../lib/config";
 import type { GitStatus } from "../lib/git";
+import type { SSHConnection } from "../lib/ssh";
 import { createTask } from "../lib/tasks";
 
 interface WorktreeInfo {
@@ -30,6 +32,7 @@ interface WorktreeInfo {
 interface Props {
   isOpen: boolean;
   project: ProjectConfig | null;
+  sshConnections: SSHConnection[];
   onClose: () => void;
   onTaskCreated: (task: ReturnType<typeof createTask>) => void;
 }
@@ -56,7 +59,7 @@ function slugifyTaskName(name: string): string {
   return slug || "task";
 }
 
-export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Props) {
+export function CreateTaskModal({ isOpen, project, sshConnections, onClose, onTaskCreated }: Props) {
   const [name, setName] = useState("");
   const [baseBranch, setBaseBranch] = useState(CURRENT_BRANCH_VALUE);
   const [initialPrompt, setInitialPrompt] = useState("");
@@ -66,6 +69,15 @@ export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Pro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGitRepo, setIsGitRepo] = useState(true);
+  const [isRemote, setIsRemote] = useState(false);
+
+  // Get SSH connection for this project
+  const sshConnection = useMemo(() => {
+    if (!project?.sshConnectionId) return null;
+    return sshConnections.find((c) => c.id === project.sshConnectionId) || null;
+  }, [project?.sshConnectionId, sshConnections]);
+
+  const canRunRemote = !!sshConnection && !!project?.remoteProjectPath;
 
   const trimmedName = name.trim();
   const slug = useMemo(() => slugifyTaskName(trimmedName), [trimmedName]);
@@ -81,6 +93,7 @@ export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Pro
     setDirtyCount(0);
     setError(null);
     setIsGitRepo(true);
+    setIsRemote(false);
 
     async function loadGitData() {
       if (!project) return;
@@ -113,7 +126,7 @@ export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Pro
   async function handleCreate() {
     if (!project || !trimmedName || !isGitRepo) return;
 
-    if (dirtyCount > 0) {
+    if (dirtyCount > 0 && !isRemote) {
       const confirmed = await ask(
         "This repository has uncommitted changes. Create a worktree anyway?",
         { title: "Uncommitted Changes", kind: "warning" }
@@ -128,18 +141,41 @@ export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Pro
       const baseRef =
         baseBranch === CURRENT_BRANCH_VALUE ? undefined : baseBranch;
 
-      const worktree = await invoke<WorktreeInfo>("create_worktree", {
-        projectPath: project.path,
-        taskName: trimmedName,
-        baseRef,
-      });
+      let worktree: WorktreeInfo;
+      let tmuxSession: string | undefined;
+
+      if (isRemote && sshConnection && project.remoteProjectPath) {
+        // Create remote worktree
+        worktree = await invoke<WorktreeInfo>("create_remote_worktree", {
+          sshHost: sshConnection.host,
+          sshPort: sshConnection.port,
+          sshUser: sshConnection.user,
+          sshKeyPath: sshConnection.keyPath || null,
+          remoteProjectPath: project.remoteProjectPath,
+          taskName: trimmedName,
+          baseRef,
+        });
+
+        // Generate tmux session name for reconnection
+        const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        tmuxSession = `aterm-${slug}-${Date.now().toString(36)}`;
+      } else {
+        // Create local worktree
+        worktree = await invoke<WorktreeInfo>("create_worktree", {
+          projectPath: project.path,
+          taskName: trimmedName,
+          baseRef,
+        });
+      }
 
       const task = createTask(
         project.id,
         trimmedName,
         worktree.branch,
         worktree.path,
-        initialPrompt
+        initialPrompt,
+        isRemote || undefined,
+        tmuxSession
       );
 
       onTaskCreated(task);
@@ -221,10 +257,25 @@ export function CreateTaskModal({ isOpen, project, onClose, onTaskCreated }: Pro
             />
           </label>
 
-          {dirtyCount > 0 && (
+          {dirtyCount > 0 && !isRemote && (
             <div className="px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
               Working tree has {dirtyCount} uncommitted change{dirtyCount === 1 ? "" : "s"}.
             </div>
+          )}
+
+          {canRunRemote && (
+            <label className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-muted border border-border cursor-pointer">
+              <Checkbox
+                checked={isRemote}
+                onCheckedChange={(checked) => setIsRemote(checked === true)}
+              />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">Run on remote server</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {sshConnection?.name} ({sshConnection?.user}@{sshConnection?.host})
+                </span>
+              </div>
+            </label>
           )}
         </div>
 

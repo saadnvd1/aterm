@@ -31,6 +31,7 @@ export function RowWithResizer({
   onStartRename,
   activeDragId,
   isProjectActive,
+  remoteExecution,
 }: RowProps) {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -121,6 +122,7 @@ export function RowWithResizer({
               onStartRename={() => onStartRename(pane.id)}
               activeDragId={activeDragId}
               isProjectActive={isProjectActive}
+              remoteExecution={remoteExecution}
             />
           );
         })}

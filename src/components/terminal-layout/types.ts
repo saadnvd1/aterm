@@ -1,6 +1,7 @@
 import type { ProjectConfig } from "../../lib/config";
 import type { Layout, LayoutRow } from "../../lib/layouts";
 import type { TerminalProfile } from "../../lib/profiles";
+import type { RemoteExecution } from "../TerminalLayout";
 
 export interface RowProps {
   row: LayoutRow;
@@ -30,6 +31,7 @@ export interface RowProps {
   onStartRename: (paneId: string) => void;
   activeDragId: string | null;
   isProjectActive: boolean;
+  remoteExecution?: RemoteExecution;
 }
 
 export interface PaneProps {
@@ -65,6 +67,7 @@ export interface PaneProps {
   onStartRename: () => void;
   activeDragId: string | null;
   isProjectActive: boolean;
+  remoteExecution?: RemoteExecution;
 }
 
 export type EdgePosition = "left" | "right" | "top" | "bottom";

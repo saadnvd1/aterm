@@ -8,6 +8,8 @@ export interface Task {
   status: "idle" | "active";
   createdAt: string;
   promptInjected?: boolean;
+  isRemote?: boolean; // If true, runs on remote server via SSH
+  remoteTmuxSession?: string; // tmux session name on remote for reconnection
 }
 
 export function createTask(
@@ -15,7 +17,9 @@ export function createTask(
   name: string,
   branch: string,
   worktreePath: string,
-  initialPrompt?: string
+  initialPrompt?: string,
+  isRemote?: boolean,
+  remoteTmuxSession?: string
 ): Task {
   return {
     id: crypto.randomUUID(),
@@ -27,6 +31,8 @@ export function createTask(
     status: "idle",
     createdAt: new Date().toISOString(),
     promptInjected: false,
+    isRemote,
+    remoteTmuxSession,
   };
 }
 
