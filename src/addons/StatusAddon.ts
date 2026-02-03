@@ -184,6 +184,11 @@ export class StatusAddon implements ITerminalAddon {
     const hasBusyIndicators = checkBusyIndicators(content);
     const hasWaitingPatterns = checkWaitingPatterns(content);
 
+    // DEBUG
+    if (hasBusyIndicators || hasWaitingPatterns) {
+      console.log("[StatusAddon]", this.paneId, "busy:", hasBusyIndicators, "waiting:", hasWaitingPatterns, "content length:", content.length);
+    }
+
     // Mark as agent if we detect AI-specific patterns
     if (hasBusyIndicators || hasWaitingPatterns) {
       this.tracker.isAgentDetected = true;

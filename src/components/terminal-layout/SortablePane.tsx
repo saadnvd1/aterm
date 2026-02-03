@@ -92,6 +92,9 @@ export function SortablePane({
     )
   );
 
+  // DEBUG
+  console.log("[StatusDebug] pane:", paneId, "command:", profile?.command, "isProfileAgent:", isProfileAgent);
+
   // Status change handler - reports to SessionContext
   // Tracks if: profile is AI agent OR patterns detected (for shells running AI)
   const handleStatusChange = useCallback(
