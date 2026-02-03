@@ -21,6 +21,7 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 
 - **Agentic Layouts** - Pre-configured for AI-assisted development (AI + Shell, AI + Dev + Shell, AI + Git)
 - **Project Workspaces** - Switch between projects instantly with Cmd+1-9, terminals persist in background
+- **Task Worktrees** - Create tasks backed by git worktrees to work on multiple features in parallel
 - **Built-in Git Panel** - Stage, commit, push, and view diffs without leaving the terminal
 - **Multi-Agent Support** - Claude Code, Aider, OpenCode, Cursor, and custom commands
 - **Split Panes** - Right-click to split with any profile, drag borders to resize
