@@ -1,7 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import Fuse from "fuse.js";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,26 +9,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ChevronUp, ChevronRight, Folder, GitBranch, Circle, Search } from "lucide-react";
-import { ProviderId, getProviderList, PROVIDERS } from "../lib/providers";
+import { ProviderId } from "../lib/providers";
 import { createProject, ProjectConfig } from "../lib/config";
 import type { Layout } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
-
-interface DirEntry {
-  name: string;
-  path: string;
-  isDir: boolean;
-  isGitRepo: boolean;
-}
+import { DirectoryBrowser, ProjectFormFields, DirEntry } from "./add-project";
 
 interface Props {
   isOpen: boolean;
@@ -38,27 +22,6 @@ interface Props {
   onProjectAdded: (project: ProjectConfig) => void;
   layouts: Layout[];
   profiles: TerminalProfile[];
-}
-
-function LayoutPreview({ layout, profiles }: { layout: Layout; profiles: TerminalProfile[] }) {
-  return (
-    <div className="w-12 h-8 flex flex-col gap-px bg-background rounded-sm overflow-hidden shrink-0 border border-border">
-      {layout.rows.map((row) => (
-        <div key={row.id} className="flex gap-px" style={{ flex: row.flex }}>
-          {row.panes.map((pane) => {
-            const profile = profiles.find((p) => p.id === pane.profileId);
-            return (
-              <div
-                key={pane.id}
-                className="min-h-1 opacity-80"
-                style={{ flex: pane.flex, backgroundColor: profile?.color || "#888" }}
-              />
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, profiles }: Props) {
@@ -77,8 +40,6 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [skipPermissions, setSkipPermissions] = useState(false);
 
-  const providers = getProviderList();
-
   // Sync pathInput with currentPath
   useEffect(() => {
     setPathInput(currentPath);
@@ -90,20 +51,6 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
       setFolderSearch("");
     }
   }
-
-  const fuse = useMemo(
-    () =>
-      new Fuse(entries, {
-        keys: ["name"],
-        threshold: 0.4,
-        ignoreLocation: true,
-      }),
-    [entries]
-  );
-
-  const filteredEntries = folderSearch.trim()
-    ? fuse.search(folderSearch).map((result) => result.item)
-    : entries;
 
   useEffect(() => {
     if (isOpen) {
@@ -121,7 +68,6 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
       const result = await invoke<DirEntry[]>("list_directory", { path });
       setEntries(result);
       setCurrentPath(path);
-      // Auto-set project name from folder name
       const folderName = path.split("/").pop() || "project";
       setProjectName(folderName);
       setError(null);
@@ -132,7 +78,6 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
 
   function handleEntryClick(entry: DirEntry) {
     if (entry.isDir) {
-      // Single click navigates into the folder
       loadDirectory(entry.path);
       setFolderSearch("");
     }
@@ -232,164 +177,31 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
           )}
 
           <TabsContent value="browse" className="flex-1 overflow-auto mt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={goUp}
-                title="Go up"
-              >
-                <ChevronUp className="h-3 w-3" />
-              </Button>
-              <Input
-                type="text"
-                value={pathInput}
-                onChange={(e) => setPathInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handlePathSubmit()}
-                onBlur={handlePathSubmit}
-                className="flex-1 h-8 text-xs font-mono"
-                placeholder="/path/to/directory"
-              />
-            </div>
-
-            <div className="relative mb-2">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search folders..."
-                value={folderSearch}
-                onChange={(e) => setFolderSearch(e.target.value)}
-                className="pl-8 h-8 text-xs"
-              />
-            </div>
-
-            <div className="max-h-[180px] overflow-auto border border-border rounded-md mb-4">
-              {filteredEntries.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">
-                  {folderSearch ? "No matching folders" : "No folders"}
-                </div>
-              ) : filteredEntries.map((entry) => (
-                <button
-                  key={entry.path}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-3 py-2.5 bg-transparent border-none border-b border-border text-foreground cursor-pointer text-left text-xs transition-colors hover:bg-accent last:border-b-0",
-                    !entry.isDir && "opacity-40 cursor-default"
-                  )}
-                  onClick={() => handleEntryClick(entry)}
-                  disabled={!entry.isDir}
-                >
-                  <span className="text-[10px] text-primary w-3.5">
-                    {entry.isGitRepo ? (
-                      <GitBranch className="h-3 w-3" />
-                    ) : entry.isDir ? (
-                      <Folder className="h-3 w-3" />
-                    ) : (
-                      <Circle className="h-2 w-2" />
-                    )}
-                  </span>
-                  <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {entry.name}
-                  </span>
-                  {entry.isGitRepo && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-muted border border-border rounded text-green-500 uppercase tracking-wider">
-                      git
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-3.5">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Name
-                  </span>
-                  <Input
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                  />
-                </label>
-
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Provider
-                  </span>
-                  <Select value={provider} onValueChange={(v) => setProvider(v as ProviderId)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {providers.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Layout
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Select value={layoutId} onValueChange={setLayoutId}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {layouts.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {layouts.find((l) => l.id === layoutId) && (
-                      <LayoutPreview
-                        layout={layouts.find((l) => l.id === layoutId)!}
-                        profiles={profiles}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Advanced Settings */}
-                <div className="border border-border rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => setAdvancedOpen(!advancedOpen)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <ChevronRight
-                      className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-90")}
-                    />
-                    Advanced Settings
-                  </button>
-                  {advancedOpen && (
-                    <div className="border-t border-border px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="skipPermissions-browse"
-                          checked={skipPermissions}
-                          onChange={(e) => setSkipPermissions(e.target.checked)}
-                          className="h-4 w-4 rounded border-border bg-background accent-primary"
-                        />
-                        <label htmlFor="skipPermissions-browse" className="cursor-pointer text-sm">
-                          Auto-approve tool calls
-                          <span className="ml-1 text-muted-foreground">
-                            {PROVIDERS[provider].autoApproveFlag
-                              ? `(${PROVIDERS[provider].autoApproveFlag})`
-                              : "(not supported)"}
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-            </div>
+            <DirectoryBrowser
+              currentPath={currentPath}
+              pathInput={pathInput}
+              onPathInputChange={setPathInput}
+              onPathSubmit={handlePathSubmit}
+              onGoUp={goUp}
+              entries={entries}
+              folderSearch={folderSearch}
+              onFolderSearchChange={setFolderSearch}
+              onEntryClick={handleEntryClick}
+            />
+            <ProjectFormFields
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
+              provider={provider}
+              onProviderChange={setProvider}
+              layoutId={layoutId}
+              onLayoutIdChange={setLayoutId}
+              layouts={layouts}
+              profiles={profiles}
+              advancedOpen={advancedOpen}
+              onAdvancedOpenChange={setAdvancedOpen}
+              skipPermissions={skipPermissions}
+              onSkipPermissionsChange={setSkipPermissions}
+            />
           </TabsContent>
 
           <TabsContent value="clone" className="flex-1 overflow-auto mt-4">
@@ -429,84 +241,21 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
                 />
               </label>
 
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Provider
-                </span>
-                <Select value={provider} onValueChange={(v) => setProvider(v as ProviderId)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {providers.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Layout
-                </span>
-                <div className="flex items-center gap-2">
-                  <Select value={layoutId} onValueChange={setLayoutId}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {layouts.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {layouts.find((l) => l.id === layoutId) && (
-                    <LayoutPreview
-                      layout={layouts.find((l) => l.id === layoutId)!}
-                      profiles={profiles}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Advanced Settings */}
-              <div className="border border-border rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedOpen(!advancedOpen)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronRight
-                    className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-90")}
-                  />
-                  Advanced Settings
-                </button>
-                {advancedOpen && (
-                  <div className="border-t border-border px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="skipPermissions-clone"
-                        checked={skipPermissions}
-                        onChange={(e) => setSkipPermissions(e.target.checked)}
-                        className="h-4 w-4 rounded border-border bg-background accent-primary"
-                      />
-                      <label htmlFor="skipPermissions-clone" className="cursor-pointer text-sm">
-                        Auto-approve tool calls
-                        <span className="ml-1 text-muted-foreground">
-                          {PROVIDERS[provider].autoApproveFlag
-                            ? `(${PROVIDERS[provider].autoApproveFlag})`
-                            : "(not supported)"}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ProjectFormFields
+                projectName={projectName}
+                onProjectNameChange={setProjectName}
+                provider={provider}
+                onProviderChange={setProvider}
+                layoutId={layoutId}
+                onLayoutIdChange={setLayoutId}
+                layouts={layouts}
+                profiles={profiles}
+                advancedOpen={advancedOpen}
+                onAdvancedOpenChange={setAdvancedOpen}
+                skipPermissions={skipPermissions}
+                onSkipPermissionsChange={setSkipPermissions}
+                showNameField={false}
+              />
             </div>
           </TabsContent>
         </Tabs>
