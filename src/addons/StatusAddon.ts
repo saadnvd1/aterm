@@ -18,6 +18,7 @@ export interface StatusChangeEvent {
   paneId: string;
   status: PaneStatus;
   previousStatus: PaneStatus;
+  isAgent: boolean; // True if we've detected AI agent patterns
 }
 
 // Configuration
@@ -35,6 +36,7 @@ interface StateTracker {
   spikeWindowStart: number | null;
   spikeChangeCount: number;
   lastBufferSnapshot: string;
+  isAgentDetected: boolean; // True once we've seen AI-specific patterns
 }
 
 export class StatusAddon implements ITerminalAddon {
@@ -54,6 +56,7 @@ export class StatusAddon implements ITerminalAddon {
       spikeWindowStart: null,
       spikeChangeCount: 0,
       lastBufferSnapshot: "",
+      isAgentDetected: false,
     };
   }
 
@@ -176,19 +179,26 @@ export class StatusAddon implements ITerminalAddon {
     }
 
     let newStatus: PaneStatus;
+    const hasBusyIndicators = checkBusyIndicators(content);
+    const hasWaitingPatterns = checkWaitingPatterns(content);
+
+    // Mark as agent if we detect AI-specific patterns
+    if (hasBusyIndicators || hasWaitingPatterns) {
+      this.tracker.isAgentDetected = true;
+    }
 
     // Priority 1: Check for busy indicators (actively running)
-    if (checkBusyIndicators(content)) {
+    if (hasBusyIndicators) {
       this.tracker.lastChangeTime = now;
       this.tracker.acknowledged = false;
       newStatus = "running";
     }
     // Priority 2: Check for waiting patterns
-    else if (checkWaitingPatterns(content)) {
+    else if (hasWaitingPatterns) {
       newStatus = "waiting";
     }
-    // Priority 3: Check cooldown period
-    else if (now - this.tracker.lastChangeTime < CONFIG.ACTIVITY_COOLDOWN_MS) {
+    // Priority 3: Check cooldown period (only for detected agents)
+    else if (this.tracker.isAgentDetected && now - this.tracker.lastChangeTime < CONFIG.ACTIVITY_COOLDOWN_MS) {
       newStatus = "running";
     }
     // Priority 4: Cooldown expired - idle or waiting based on acknowledgment
@@ -208,11 +218,19 @@ export class StatusAddon implements ITerminalAddon {
         paneId: this.paneId,
         status: newStatus,
         previousStatus: this.currentStatus,
+        isAgent: this.tracker.isAgentDetected,
       };
       this.currentStatus = newStatus;
 
       // Notify all listeners
       this.onStatusChangeCallbacks.forEach((cb) => cb(event));
     }
+  }
+
+  /**
+   * Check if this pane has been detected as an AI agent
+   */
+  isAgent(): boolean {
+    return this.tracker.isAgentDetected;
   }
 }

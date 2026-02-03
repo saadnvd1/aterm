@@ -7,7 +7,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
-import { StatusAddon, type PaneStatus } from "../addons/StatusAddon";
+import { StatusAddon, type PaneStatus, type StatusChangeEvent } from "../addons/StatusAddon";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-shell";
@@ -50,11 +50,11 @@ interface Props {
   canClose?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isProjectActive?: boolean;
-  onStatusChange?: (status: PaneStatus) => void;
+  onStatusChange?: (event: StatusChangeEvent) => void;
 }
 
-// Re-export PaneStatus type for consumers
-export type { PaneStatus };
+// Re-export types for consumers
+export type { PaneStatus, StatusChangeEvent };
 
 export function TerminalPane({
   id,
@@ -94,6 +94,7 @@ export function TerminalPane({
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [paneStatus, setPaneStatus] = useState<PaneStatus>("idle");
+  const [isAgentPane, setIsAgentPane] = useState(false);
 
   // Keep refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;
@@ -226,7 +227,10 @@ export function TerminalPane({
     // Set up status change listener
     const statusDisposable = statusAddon.onStatusChange((event) => {
       setPaneStatus(event.status);
-      onStatusChangeRef.current?.(event.status);
+      if (event.isAgent) {
+        setIsAgentPane(true);
+      }
+      onStatusChangeRef.current?.(event);
     });
 
     // Fit terminal
@@ -438,7 +442,7 @@ export function TerminalPane({
         triggerRename={triggerRename}
         onTriggerRenameComplete={onTriggerRenameComplete}
         dragHandleProps={dragHandleProps}
-        status={paneStatus}
+        status={isAgentPane ? paneStatus : undefined}
       />
       <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />
       {isSearchOpen && (

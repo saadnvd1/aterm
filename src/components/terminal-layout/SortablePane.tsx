@@ -84,10 +84,12 @@ export function SortablePane({
   const containerRef = useRef<HTMLDivElement>(null);
   const { updatePaneStatus } = useSession();
 
-  // Status change handler - reports to SessionContext
+  // Status change handler - reports to SessionContext (only for detected AI agent panes)
   const handleStatusChange = useCallback(
-    (status: import("../../addons/StatusAddon").PaneStatus) => {
-      updatePaneStatus(`${project.id}-${paneId}`, project.id, status);
+    (event: import("../../addons/StatusAddon").StatusChangeEvent) => {
+      // Only track status for panes that have been detected as AI agents
+      if (!event.isAgent) return;
+      updatePaneStatus(`${project.id}-${paneId}`, project.id, event.status);
     },
     [updatePaneStatus, project.id, paneId]
   );

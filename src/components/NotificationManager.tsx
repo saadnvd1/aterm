@@ -37,13 +37,14 @@ export function NotificationManager({ paneNames, projectNames }: Props) {
         runningCount++;
       }
 
-      // Detect transitions
+      // Detect transitions (only notify for actual AI agent panes)
       if (previousStatus && previousStatus !== info.status) {
         handleStatusChange(
           {
             paneId,
             status: info.status,
             previousStatus,
+            isAgent: true, // Only tracked panes are agents
           },
           paneNames?.get(paneId),
           projectNames?.get(paneId)
