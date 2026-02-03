@@ -50,6 +50,8 @@ export const WAITING_PATTERNS = [
   /Yes, allow all/i,
   /allow all edits/i,
   /allow all commands/i,
+  /accept edits on/i,  // Claude Code diff acceptance prompt
+  /shift\+tab to cycle/i,  // Claude Code diff cycling
 ];
 
 /**
