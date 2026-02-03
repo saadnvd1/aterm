@@ -3,7 +3,7 @@ import Fuse from "fuse.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Settings, Plus, GitBranch, X, Zap } from "lucide-react";
+import { Settings, Plus, GitBranch, X, Zap, Cloud } from "lucide-react";
 import type { ProjectConfig, AppConfig } from "../lib/config";
 import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
@@ -205,12 +205,17 @@ export function ProjectSidebar({
                       </span>
                       <span
                         className={cn(
-                          "text-[10px]",
+                          "text-[10px] flex items-center gap-1",
                           useLightText ? "text-white/70" : "text-muted-foreground"
                         )}
                       >
                         {PROVIDERS[project.provider]?.name || project.provider}
                         {layout && ` · ${layout.name}`}
+                        {project.sshConnectionId && (
+                          <span title="Remote execution enabled">
+                            <Cloud className="h-3 w-3 ml-0.5" />
+                          </span>
+                        )}
                       </span>
                     </div>
                   </button>
@@ -322,6 +327,7 @@ export function ProjectSidebar({
         onProjectAdded={handleProjectAdded}
         layouts={config.layouts}
         profiles={config.profiles}
+        sshConnections={config.sshConnections || []}
       />
 
       <SettingsModal

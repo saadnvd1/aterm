@@ -14,7 +14,8 @@ import { ProviderId } from "../lib/providers";
 import { createProject, ProjectConfig } from "../lib/config";
 import type { Layout } from "../lib/layouts";
 import type { TerminalProfile } from "../lib/profiles";
-import { DirectoryBrowser, ProjectFormFields, DirEntry } from "./add-project";
+import type { SSHConnection } from "../lib/ssh";
+import { DirectoryBrowser, ProjectFormFields, RemoteExecutionSection, DirEntry } from "./add-project";
 
 interface Props {
   isOpen: boolean;
@@ -22,9 +23,10 @@ interface Props {
   onProjectAdded: (project: ProjectConfig) => void;
   layouts: Layout[];
   profiles: TerminalProfile[];
+  sshConnections: SSHConnection[];
 }
 
-export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, profiles }: Props) {
+export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, profiles, sshConnections }: Props) {
   const [mode, setMode] = useState<"browse" | "clone">("browse");
   const [currentPath, setCurrentPath] = useState("");
   const [entries, setEntries] = useState<DirEntry[]>([]);
@@ -39,6 +41,11 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
   const [pathInput, setPathInput] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [skipPermissions, setSkipPermissions] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(false);
+  const [sshConnectionId, setSshConnectionId] = useState<string>("");
+  const [remoteProjectPath, setRemoteProjectPath] = useState("");
+  const [validatingPath, setValidatingPath] = useState(false);
+  const [pathValid, setPathValid] = useState<boolean | null>(null);
 
   // Sync pathInput with currentPath
   useEffect(() => {
@@ -98,14 +105,13 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
         path: currentPath,
       });
 
-      const project = createProject(
-        projectName,
-        currentPath,
-        provider,
-        gitRemote || undefined,
+      const project = createProject(projectName, currentPath, provider, {
+        gitRemote: gitRemote || undefined,
         layoutId,
-        skipPermissions
-      );
+        skipPermissions,
+        sshConnectionId: sshConnectionId || undefined,
+        remoteProjectPath: remoteProjectPath || undefined,
+      });
 
       onProjectAdded(project);
       onClose();
@@ -132,7 +138,13 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
 
       await invoke("clone_repo", { url: cloneUrl, destination });
 
-      const project = createProject(repoName, destination, provider, cloneUrl, layoutId, skipPermissions);
+      const project = createProject(repoName, destination, provider, {
+        gitRemote: cloneUrl,
+        layoutId,
+        skipPermissions,
+        sshConnectionId: sshConnectionId || undefined,
+        remoteProjectPath: remoteProjectPath || undefined,
+      });
 
       onProjectAdded(project);
       onClose();
@@ -155,6 +167,36 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
     setPathInput("");
     setAdvancedOpen(false);
     setSkipPermissions(false);
+    setRemoteOpen(false);
+    setSshConnectionId("");
+    setRemoteProjectPath("");
+    setValidatingPath(false);
+    setPathValid(null);
+  }
+
+  async function validateRemotePath() {
+    if (!sshConnectionId || !remoteProjectPath) return;
+
+    const conn = sshConnections.find((c) => c.id === sshConnectionId);
+    if (!conn) return;
+
+    setValidatingPath(true);
+    setPathValid(null);
+
+    try {
+      const exists = await invoke<boolean>("remote_path_exists", {
+        host: conn.host,
+        port: conn.port,
+        user: conn.user,
+        keyPath: conn.keyPath || null,
+        path: remoteProjectPath,
+      });
+      setPathValid(exists);
+    } catch {
+      setPathValid(false);
+    } finally {
+      setValidatingPath(false);
+    }
   }
 
   return (
@@ -201,6 +243,18 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
               onAdvancedOpenChange={setAdvancedOpen}
               skipPermissions={skipPermissions}
               onSkipPermissionsChange={setSkipPermissions}
+            />
+            <RemoteExecutionSection
+              sshConnections={sshConnections}
+              sshConnectionId={sshConnectionId}
+              onConnectionChange={setSshConnectionId}
+              remoteProjectPath={remoteProjectPath}
+              onRemotePathChange={setRemoteProjectPath}
+              remoteOpen={remoteOpen}
+              onRemoteOpenChange={setRemoteOpen}
+              validatingPath={validatingPath}
+              pathValid={pathValid}
+              onValidatePath={validateRemotePath}
             />
           </TabsContent>
 
@@ -255,6 +309,18 @@ export function AddProjectModal({ isOpen, onClose, onProjectAdded, layouts, prof
                 skipPermissions={skipPermissions}
                 onSkipPermissionsChange={setSkipPermissions}
                 showNameField={false}
+              />
+              <RemoteExecutionSection
+                sshConnections={sshConnections}
+                sshConnectionId={sshConnectionId}
+                onConnectionChange={setSshConnectionId}
+                remoteProjectPath={remoteProjectPath}
+                onRemotePathChange={setRemoteProjectPath}
+                remoteOpen={remoteOpen}
+                onRemoteOpenChange={setRemoteOpen}
+                validatingPath={validatingPath}
+                pathValid={pathValid}
+                onValidatePath={validateRemotePath}
               />
             </div>
           </TabsContent>

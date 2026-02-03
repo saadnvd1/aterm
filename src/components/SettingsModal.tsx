@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { ATColorDot } from "@/components/ui/at-color-dot";
-import { AppearanceTab, ProfilesTab, LayoutsTab } from "./settings";
+import { AppearanceTab, ProfilesTab, LayoutsTab, SSHConnectionsTab } from "./settings";
 import type { AppConfig } from "../lib/config";
 import type { TerminalProfile } from "../lib/profiles";
 
@@ -104,10 +104,11 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
         </DialogHeader>
 
         <Tabs defaultValue="appearance" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="profiles">Profiles</TabsTrigger>
             <TabsTrigger value="layouts">Layouts</TabsTrigger>
+            <TabsTrigger value="ssh">SSH</TabsTrigger>
           </TabsList>
 
           <TabsContent value="appearance" className="flex-1 overflow-auto mt-4">
@@ -135,6 +136,13 @@ export function SettingsModal({ isOpen, onClose, config, onConfigChange }: Props
               layouts={config.layouts}
               profiles={config.profiles}
               onLayoutsChange={(layouts) => onConfigChange({ ...config, layouts })}
+            />
+          </TabsContent>
+
+          <TabsContent value="ssh" className="flex-1 overflow-auto mt-4">
+            <SSHConnectionsTab
+              connections={config.sshConnections || []}
+              onConnectionsChange={(sshConnections) => onConfigChange({ ...config, sshConnections })}
             />
           </TabsContent>
         </Tabs>
