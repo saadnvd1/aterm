@@ -28,7 +28,7 @@ pub async fn create_detached_window(
         config.window_type, config.id
     );
 
-    WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
+    let window = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
         .title(&config.title)
         .inner_size(
             config.width.unwrap_or(1200.0),
@@ -36,6 +36,9 @@ pub async fn create_detached_window(
         )
         .build()
         .map_err(|e| e.to_string())?;
+
+    // Explicitly set title after creation to ensure it takes effect
+    window.set_title(&config.title).map_err(|e| e.to_string())?;
 
     Ok(label)
 }

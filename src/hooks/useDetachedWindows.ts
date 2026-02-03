@@ -85,7 +85,7 @@ export function useDetachedWindows() {
       const windowConfig: WindowConfig = {
         window_type: "pane",
         id: paneId,
-        title: `${profile.name} - ${project.name}`,
+        title: `${project.name} — ${profile.name}`,
         width: 900,
         height: 700,
       };
