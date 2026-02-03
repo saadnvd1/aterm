@@ -51,6 +51,8 @@ interface Props {
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isProjectActive?: boolean;
   onStatusChange?: (event: StatusChangeEvent) => void;
+  /** If true, this pane is configured as an AI agent (show status immediately) */
+  isProfileAgent?: boolean;
 }
 
 // Re-export types for consumers
@@ -79,6 +81,7 @@ export function TerminalPane({
   dragHandleProps,
   isProjectActive = true,
   onStatusChange,
+  isProfileAgent = false,
 }: Props) {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +97,7 @@ export function TerminalPane({
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [paneStatus, setPaneStatus] = useState<PaneStatus>("idle");
-  const [isAgentPane, setIsAgentPane] = useState(false);
+  const [isAgentPane, setIsAgentPane] = useState(isProfileAgent);
 
   // Keep refs updated with latest callbacks
   onToggleMaximizeRef.current = onToggleMaximize;

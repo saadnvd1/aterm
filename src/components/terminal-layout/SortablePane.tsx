@@ -84,14 +84,22 @@ export function SortablePane({
   const containerRef = useRef<HTMLDivElement>(null);
   const { updatePaneStatus } = useSession();
 
-  // Status change handler - reports to SessionContext (only for detected AI agent panes)
+  // Check if profile is configured for an AI agent (command matches known AI CLI)
+  const isProfileAgent = Boolean(
+    profile?.command &&
+    Object.values(PROVIDERS).some(
+      (p) => p.cli && profile?.command?.startsWith(p.cli)
+    )
+  );
+
+  // Status change handler - reports to SessionContext
+  // Tracks if: profile is AI agent OR patterns detected (for shells running AI)
   const handleStatusChange = useCallback(
     (event: import("../../addons/StatusAddon").StatusChangeEvent) => {
-      // Only track status for panes that have been detected as AI agents
-      if (!event.isAgent) return;
+      if (!isProfileAgent && !event.isAgent) return;
       updatePaneStatus(`${project.id}-${paneId}`, project.id, event.status);
     },
-    [updatePaneStatus, project.id, paneId]
+    [updatePaneStatus, project.id, paneId, isProfileAgent]
   );
 
   const {
@@ -217,6 +225,7 @@ export function SortablePane({
           dragHandleProps={{ ...attributes, ...listeners }}
           isProjectActive={isProjectActive}
           onStatusChange={handleStatusChange}
+          isProfileAgent={isProfileAgent}
         />
       )}
       {isMaximized && (
