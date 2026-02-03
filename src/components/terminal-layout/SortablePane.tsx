@@ -190,11 +190,8 @@ export function SortablePane({
           title={paneName || profile.name}
           cwd={project.path}
           command={remoteExecution ? undefined : buildCommand(profile.command, project.skipPermissions)}
-          initialInput={
-            remoteExecution && profile.command
-              ? buildCommand(profile.command, project.skipPermissions)
-              : initialInput
-          }
+          initialInput={initialInput}
+          remoteCommand={remoteExecution && profile.command ? buildCommand(profile.command, project.skipPermissions) : undefined}
           onInitialInputSent={onInitialInputSent}
           accentColor={profile.color}
           projectColor={project.color}

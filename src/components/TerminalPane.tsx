@@ -16,6 +16,8 @@ interface Props {
   cwd: string;
   command?: string;
   initialInput?: string;
+  // For remote: command to run first (e.g., "claude"), then initialInput is sent after CLI is ready
+  remoteCommand?: string;
   onInitialInputSent?: () => void;
   accentColor?: string;
   projectColor?: string;
@@ -49,6 +51,7 @@ export function TerminalPane({
   cwd,
   command,
   initialInput,
+  remoteCommand,
   onInitialInputSent,
   accentColor,
   projectColor,
@@ -86,6 +89,7 @@ export function TerminalPane({
     cwd,
     command,
     initialInput,
+    remoteCommand,
     scrollback,
     fontSize: savedFontSize ?? defaultFontSize,
     theme,

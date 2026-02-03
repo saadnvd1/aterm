@@ -21,6 +21,8 @@ interface UseTerminalInstanceOptions {
   cwd: string;
   command?: string;
   initialInput?: string;
+  // For remote: command to run first (e.g., "claude"), then initialInput is sent after CLI is ready
+  remoteCommand?: string;
   scrollback: number;
   fontSize: number;
   theme: {
@@ -102,6 +104,7 @@ export function useTerminalInstance({
   cwd,
   command,
   initialInput,
+  remoteCommand,
   scrollback,
   fontSize,
   theme,
@@ -275,10 +278,22 @@ export function useTerminalInstance({
       }
     }
 
-    // Initial prompt injection with debounce + idle detection
+    // Two-stage injection for remote: first remoteCommand, then initialInput after CLI is ready
+    // Single-stage for local: just initialInput after CLI is ready
     let silenceTimer: number | null = null;
     let fallbackTimer: number | null = null;
+    let remoteCommandSent = false;
     let initialPromptSent = false;
+
+    const sendRemoteCommand = () => {
+      if (remoteCommandSent || !remoteCommand) return;
+      remoteCommandSent = true;
+
+      invoke("write_pty", { id, data: remoteCommand })
+        .then(() => new Promise(resolve => setTimeout(resolve, 50)))
+        .then(() => invoke("write_pty", { id, data: "\r" }))
+        .catch(console.error);
+    };
 
     const sendInitialPrompt = () => {
       if (initialPromptSent || !initialInput) return;
@@ -295,7 +310,19 @@ export function useTerminalInstance({
         });
     };
 
-    if (initialInput) {
+    // For remote: send command first, then wait for CLI idle to send prompt
+    // For local: just wait for CLI idle to send prompt
+    if (remoteCommand) {
+      // Remote two-stage: send command after shell is ready (short delay)
+      silenceTimer = window.setTimeout(() => sendRemoteCommand(), 1500);
+      fallbackTimer = window.setTimeout(() => {
+        sendRemoteCommand();
+        if (initialInput) {
+          // Fallback: send prompt after longer delay if idle detection doesn't trigger
+          setTimeout(() => sendInitialPrompt(), 8000);
+        }
+      }, 10000);
+    } else if (initialInput) {
       fallbackTimer = window.setTimeout(() => sendInitialPrompt(), 10000);
       silenceTimer = window.setTimeout(() => sendInitialPrompt(), 2000);
     }
@@ -330,20 +357,37 @@ export function useTerminalInstance({
           requestAnimationFrame(flushPendingData);
         }
 
-        // Debounce + idle detection for initial prompt injection
-        if (initialInput && !initialPromptSent) {
-          if (silenceTimer) clearTimeout(silenceTimer);
-          silenceTimer = window.setTimeout(() => sendInitialPrompt(), 1200);
+        // Idle detection for injection
+        try {
+          const text = new TextDecoder().decode(rawData);
 
-          try {
-            const text = new TextDecoder().decode(rawData);
+          // For remote: first detect shell ready, then CLI ready
+          if (remoteCommand && !remoteCommandSent) {
+            // Shell prompt detection ($ or % or >)
+            const shellReady = /[$%>]\s*$/.test(stripAnsi(text));
+            if (shellReady) {
+              if (silenceTimer) clearTimeout(silenceTimer);
+              silenceTimer = window.setTimeout(() => sendRemoteCommand(), 200);
+            }
+          } else if (remoteCommand && remoteCommandSent && initialInput && !initialPromptSent) {
+            // CLI idle detection for sending prompt
+            if (silenceTimer) clearTimeout(silenceTimer);
+            silenceTimer = window.setTimeout(() => sendInitialPrompt(), 1200);
             if (isCliIdle(text)) {
               if (silenceTimer) clearTimeout(silenceTimer);
               silenceTimer = window.setTimeout(() => sendInitialPrompt(), 250);
             }
-          } catch {
-            // Ignore decode errors
+          } else if (!remoteCommand && initialInput && !initialPromptSent) {
+            // Local: standard idle detection
+            if (silenceTimer) clearTimeout(silenceTimer);
+            silenceTimer = window.setTimeout(() => sendInitialPrompt(), 1200);
+            if (isCliIdle(text)) {
+              if (silenceTimer) clearTimeout(silenceTimer);
+              silenceTimer = window.setTimeout(() => sendInitialPrompt(), 250);
+            }
           }
+        } catch {
+          // Ignore decode errors
         }
       }).then((fn) => {
         unlistenFn = fn;
@@ -383,7 +427,7 @@ export function useTerminalInstance({
       terminal.element?.removeEventListener("click", handleTerminalClick);
       resizeObserver.disconnect();
     };
-  }, [id, cwd, command, initialInput, isRemote, sshHost, sshPort, sshUser, sshKeyPath, tmuxSession]);
+  }, [id, cwd, command, initialInput, remoteCommand, isRemote, sshHost, sshPort, sshUser, sshKeyPath, tmuxSession]);
 
   return { terminalRef, fitAddonRef, searchAddonRef };
 }
