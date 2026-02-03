@@ -343,6 +343,7 @@ export function ProjectSidebar({
           onClose={() => setEditingProject(null)}
           project={editingProject}
           layouts={config.layouts}
+          sshConnections={config.sshConnections || []}
           onSave={handleProjectSave}
         />
       )}
