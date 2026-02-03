@@ -146,18 +146,20 @@ export class StatusAddon implements ITerminalAddon {
   }
 
   /**
-   * Get terminal buffer content (last N lines)
+   * Get terminal buffer content - reads the visible viewport
+   * Claude Code uses full-screen cursor positioning, so we need the viewport, not buffer end
    */
   private getBufferContent(): string {
     if (!this.terminal) return "";
 
     const buffer = this.terminal.buffer.active;
     const lines: string[] = [];
-    // buffer.length is the total number of lines (including scrollback)
-    const totalLines = buffer.length;
-    const startLine = Math.max(0, totalLines - CONFIG.MAX_LINES_TO_CHECK);
 
-    for (let i = startLine; i < totalLines; i++) {
+    // Read the visible viewport (baseY is the first visible line index)
+    const viewportStart = buffer.baseY;
+    const viewportEnd = viewportStart + this.terminal.rows;
+
+    for (let i = viewportStart; i < viewportEnd; i++) {
       const line = buffer.getLine(i);
       if (line) {
         lines.push(line.translateToString(true));

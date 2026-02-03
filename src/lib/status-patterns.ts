@@ -25,11 +25,11 @@ export const WHIMSICAL_WORDS = [
   "elucidating", "enchanting", "envisioning", "finagling", "flibbertigibbeting",
   "forging", "forming", "frolicking", "generating", "germinating", "hatching",
   "herding", "honking", "hustling", "ideating", "imagining", "incubating", "inferring",
-  "jiving", "manifesting", "marinating", "meandering", "moseying", "mulling",
+  "ionizing", "jiving", "manifesting", "marinating", "meandering", "moseying", "mulling",
   "mustering", "musing", "noodling", "percolating", "perusing", "philosophising",
   "pondering", "pontificating", "processing", "puttering", "puzzling", "reticulating",
   "ruminating", "scheming", "schlepping", "shimmying", "shucking", "simmering",
-  "smooshing", "spelunking", "spinning", "stewing", "sussing", "synthesizing",
+  "smooshing", "spelunking", "spinning", "stewing", "sussing", "swirling", "synthesizing",
   "thinking", "tinkering", "transmuting", "unfurling", "unravelling", "vibing",
   "wandering", "whirring", "wibbling", "wizarding", "working", "wrangling",
 ];
@@ -76,12 +76,13 @@ export function checkBusyIndicators(content: string): boolean {
     return true;
   }
 
-  // Check for new Claude Code format: "· Swirling…" (dot + whimsical word + ellipsis)
-  // Pattern: · followed by capitalized whimsical word and ellipsis
+  // Check for Claude Code whimsical word patterns:
+  // - "· Swirling…" (dot prefix)
+  // - "✽ Ionizing… (thinking)" (star prefix with optional suffix)
+  // Just check for capitalized whimsical word + ellipsis anywhere
   if (WHIMSICAL_WORDS.some((w) => {
     const capitalized = w.charAt(0).toUpperCase() + w.slice(1);
-    return recentContentOriginal.includes(`· ${capitalized}…`) ||
-           recentContentOriginal.includes(`${capitalized}…`);
+    return recentContentOriginal.includes(`${capitalized}…`);
   })) {
     return true;
   }
