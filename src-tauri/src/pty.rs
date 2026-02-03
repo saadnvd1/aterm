@@ -184,17 +184,15 @@ pub fn spawn_remote_pty(
     // -A: attach to existing session or create new one
     // -s: session name
     // -c: start directory
-    let tmux_cmd = if let Some(ref cmd) = command {
-        format!(
-            "tmux new-session -A -s '{}' -c '{}' '{}'",
-            tmux_session, remote_cwd, cmd
-        )
-    } else {
-        format!(
-            "tmux new-session -A -s '{}' -c '{}'",
-            tmux_session, remote_cwd
-        )
-    };
+    // Note: We don't pass the command to tmux directly because tmux exits when the command finishes.
+    // Instead, we start a shell and let initialInput inject the command.
+    let tmux_cmd = format!(
+        "tmux new-session -A -s '{}' -c '{}'",
+        tmux_session, remote_cwd
+    );
+
+    // command parameter is ignored for remote PTY - use initialInput instead
+    let _ = command;
 
     // Build SSH command
     let mut cmd = CommandBuilder::new("ssh");
