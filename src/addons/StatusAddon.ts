@@ -151,8 +151,8 @@ export class StatusAddon implements ITerminalAddon {
 
     const buffer = this.terminal.buffer.active;
     const lines: string[] = [];
-    // buffer.length includes scrollback, baseY is scroll position
-    const totalLines = buffer.baseY + this.terminal.rows;
+    // buffer.length is the total number of lines (including scrollback)
+    const totalLines = buffer.length;
     const startLine = Math.max(0, totalLines - CONFIG.MAX_LINES_TO_CHECK);
 
     for (let i = startLine; i < totalLines; i++) {
