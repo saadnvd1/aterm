@@ -195,15 +195,17 @@ export class StatusAddon implements ITerminalAddon {
     }
     // Priority 2: Check for waiting patterns
     else if (hasWaitingPatterns) {
+      this.tracker.acknowledged = false;
       newStatus = "waiting";
     }
     // Priority 3: Check cooldown period (only for detected agents)
     else if (this.tracker.isAgentDetected && now - this.tracker.lastChangeTime < CONFIG.ACTIVITY_COOLDOWN_MS) {
       newStatus = "running";
     }
-    // Priority 4: Cooldown expired - idle or waiting based on acknowledgment
+    // Priority 4: Cooldown expired, no patterns - idle
     else {
-      newStatus = this.tracker.acknowledged ? "idle" : "waiting";
+      this.tracker.acknowledged = true;
+      newStatus = "idle";
     }
 
     this.updateStatus(newStatus);
