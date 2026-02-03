@@ -47,6 +47,7 @@ export class StatusAddon implements ITerminalAddon {
   private disposables: IDisposable[] = [];
   private onStatusChangeCallbacks: ((event: StatusChangeEvent) => void)[] = [];
   private currentStatus: PaneStatus = "idle";
+  private _lastDebugLog: number = 0;
 
   constructor(paneId: string) {
     this.paneId = paneId;
@@ -184,9 +185,15 @@ export class StatusAddon implements ITerminalAddon {
     const hasBusyIndicators = checkBusyIndicators(content);
     const hasWaitingPatterns = checkWaitingPatterns(content);
 
-    // DEBUG
+    // DEBUG - log every 5 seconds to see buffer content
+    const debugNow = Date.now();
+    if (!this._lastDebugLog || debugNow - this._lastDebugLog > 5000) {
+      this._lastDebugLog = debugNow;
+      const lines = content.split("\n");
+      console.log("[StatusAddon]", this.paneId, "lines:", lines.length, "last5:", lines.slice(-5));
+    }
     if (hasBusyIndicators || hasWaitingPatterns) {
-      console.log("[StatusAddon]", this.paneId, "busy:", hasBusyIndicators, "waiting:", hasWaitingPatterns, "content length:", content.length);
+      console.log("[StatusAddon] DETECTED", this.paneId, "busy:", hasBusyIndicators, "waiting:", hasWaitingPatterns);
     }
 
     // Mark as agent if we detect AI-specific patterns
