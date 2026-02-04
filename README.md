@@ -27,6 +27,7 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 - **Multi-Agent Support** - Claude Code, Aider, OpenCode, Cursor, and custom commands
 - **Split Panes** - Right-click to split with any profile, drag borders to resize
 - **Pane Renaming** - Double-click or right-click to rename panes
+- **Scratch Notes** - Per-project markdown scratchpad for quick notes (Shift+Cmd+N)
 - **Maximize Mode** - Shift+Cmd+Enter to focus on a single pane
 - **Per-Pane Font Size** - Cmd+Plus/Minus to adjust individual pane fonts
 - **Themes** - Midnight, Dracula, Nord, Tokyo Night, Gruvbox
