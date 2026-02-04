@@ -74,6 +74,22 @@ export function TerminalLayout({
   // Get all pane IDs in order for cycling
   const allPaneIds = layout.rows.flatMap((row) => row.panes.map((p) => p.id));
 
+  // Clear stale pane state when panes are removed from layout (e.g., editor toggle)
+  useEffect(() => {
+    if (maximizedPaneId && !allPaneIds.includes(maximizedPaneId)) {
+      setMaximizedPaneId(null);
+    }
+    if (focusedPaneId && !allPaneIds.includes(focusedPaneId)) {
+      setFocusedPaneId(null);
+    }
+    if (minimizedPaneIds.size > 0) {
+      const validMinimized = new Set([...minimizedPaneIds].filter((id) => allPaneIds.includes(id)));
+      if (validMinimized.size !== minimizedPaneIds.size) {
+        setMinimizedPaneIds(validMinimized);
+      }
+    }
+  }, [allPaneIds, maximizedPaneId, focusedPaneId, minimizedPaneIds]);
+
   // Cycle to next/previous pane (skip minimized panes)
   function cyclePanes(direction: "next" | "prev") {
     // Only cycle through visible (non-minimized) panes
@@ -489,6 +505,21 @@ export function TerminalLayout({
 
     // Kill the PTY when pane is explicitly closed
     killPty(`${project.id}-${paneId}`);
+
+    // Clear any pane state referencing the closed pane
+    if (maximizedPaneId === paneId) {
+      setMaximizedPaneId(null);
+    }
+    if (focusedPaneId === paneId) {
+      setFocusedPaneId(null);
+    }
+    if (minimizedPaneIds.has(paneId)) {
+      setMinimizedPaneIds((prev) => {
+        const next = new Set(prev);
+        next.delete(paneId);
+        return next;
+      });
+    }
 
     const newRows = layout.rows
       .map((row) => {
