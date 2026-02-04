@@ -201,6 +201,24 @@ pub fn read_type_definitions(root: String) -> Result<Vec<TypeDefinition>, String
         collect_dts_files(&types_dir, "src/types", &mut definitions);
     }
 
+    // Load root-level .d.ts files from src/ (e.g., vite-env.d.ts)
+    let src_dir = root_path.join("src");
+    if src_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&src_dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.ends_with(".d.ts") {
+                    if let Ok(content) = fs::read_to_string(entry.path()) {
+                        definitions.push(TypeDefinition {
+                            path: format!("src/{}", name),
+                            content,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     Ok(definitions)
 }
 
