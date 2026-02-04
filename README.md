@@ -22,7 +22,8 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 - **Agentic Layouts** - Pre-configured for AI-assisted development (AI + Shell, AI + Dev + Shell, AI + Git)
 - **Project Workspaces** - Switch between projects instantly with Cmd+1-9, terminals persist in background
 - **Task Worktrees** - Create tasks backed by git worktrees to work on multiple features in parallel
-- **Built-in Git Panel** - Stage, commit, push, and view diffs without leaving the terminal
+- **Built-in Code Editor** - Monaco-powered editor with file explorer, syntax highlighting, and Cmd+P file search
+- **Built-in Git Panel** - Stage, commit, push, view diffs, and edit files inline with a Diff/Edit toggle
 - **Multi-Agent Support** - Claude Code, Aider, OpenCode, Cursor, and custom commands
 - **Split Panes** - Right-click to split with any profile, drag borders to resize
 - **Pane Renaming** - Double-click or right-click to rename panes
@@ -82,6 +83,7 @@ npm run tauri build
 
 - **Frontend**: React 18 + TypeScript + Tailwind CSS + shadcn/ui
 - **Terminal**: xterm.js with fit addon
+- **Editor**: Monaco (VS Code engine) with language detection
 - **Backend**: Tauri 2 (Rust) with portable-pty
 - **Drag & Drop**: @dnd-kit for pane reordering
 
