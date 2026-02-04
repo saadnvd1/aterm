@@ -41,7 +41,7 @@ done
 TAURI_KEY_PATH="$HOME/.tauri/aterm.key"
 if [ -f "$TAURI_KEY_PATH" ]; then
     export TAURI_SIGNING_PRIVATE_KEY=$(cat "$TAURI_KEY_PATH")
-    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="aterm"
+    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
     echo -e "${GREEN}Tauri signing key loaded${NC}"
 else
     echo -e "${RED}Missing Tauri signing key at $TAURI_KEY_PATH${NC}"
