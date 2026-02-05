@@ -8,6 +8,7 @@ mod directory;
 mod file_ops;
 mod git;
 mod iterm;
+mod notify;
 mod pty;
 mod window;
 mod worktree;
@@ -25,6 +26,7 @@ use pty::{
     force_exit, get_active_pty_count, kill_all_ptys, kill_pty, resize_pty, spawn_pty, write_pty,
     PtyMap,
 };
+use notify::send_bell_notification;
 use window::{close_detached_window, create_detached_window, list_detached_windows};
 use worktree::{create_worktree, list_git_branches, list_worktrees, remove_worktree};
 
@@ -79,6 +81,7 @@ pub fn run() {
             create_detached_window,
             close_detached_window,
             list_detached_windows,
+            send_bell_notification,
         ])
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -91,6 +94,9 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Initialize notifications (click-to-focus via user-notify)
+            notify::init_notifications(app.handle());
 
             // Create custom menu with Cmd+W bound to close-pane instead of close-window
             let handle = app.handle().clone();

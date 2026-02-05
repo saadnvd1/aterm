@@ -9,6 +9,7 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-shell";
 import { useTheme } from "../context/ThemeContext";
 import { PaneHeader } from "./PaneHeader";
@@ -262,6 +263,24 @@ export function TerminalPane({
 
       terminal.onData((data) => {
         invoke("write_pty", { id, data }).catch(console.error);
+      });
+
+      // Bell: macOS notification + dock bounce when window is not focused
+      let lastBellTime = 0;
+      terminal.onBell(async () => {
+        const now = Date.now();
+        if (now - lastBellTime < 5000) return; // Rate limit: 1 per 5s per pane
+
+        const focused = await getCurrentWindow().isFocused();
+        if (focused) return;
+
+        lastBellTime = now;
+
+        invoke("send_bell_notification", {
+          title: "aTerm",
+          body: `${title} needs attention`,
+        }).catch(console.error);
+        getCurrentWindow().requestUserAttention(2); // Bounce dock icon
       });
     }
 
