@@ -26,13 +26,15 @@ import "@xterm/xterm/css/xterm.css";
 
 /**
  * Filter out terminal response sequences from xterm.js onData before writing to PTY.
- * These are responses to queries (background color, cursor position, etc.) that
- * leak as visible text when the shell isn't actively consuming them.
+ *
+ * NOTE: We intentionally do NOT filter OSC responses (like OSC 11 background color).
+ * Applications like supabase CLI use lipgloss which queries terminal colors and
+ * waits for a response. Filtering these causes ~2 second timeouts.
+ *
+ * We only filter cursor/device reports that shells query but don't wait for.
  */
 function filterTerminalResponses(data: string): string {
   return data
-    // OSC responses: \x1b]11;rgb:...\x1b\\ or \x1b]11;rgb:...\x07 (background/foreground color)
-    .replace(/\x1b\]\d+;[^\x07\x1b]*(?:\x1b\\|\x07)/g, "")
     // CPR (Cursor Position Report): \x1b[<digits>;<digits>R
     .replace(/\x1b\[\d+;\d+R/g, "")
     // DA (Device Attributes) response: \x1b[?...c
@@ -343,30 +345,11 @@ export function TerminalPane({
 
     if (isNewInstance || !instance?.unlisten) {
       const decoder = new TextDecoder("utf-8", { fatal: false });
-      let pendingData: Uint8Array[] = [];
-      let frameRequested = false;
-
-      const flushPendingData = () => {
-        if (pendingData.length === 0) return;
-        const totalLength = pendingData.reduce((acc, chunk) => acc + chunk.length, 0);
-        const combined = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of pendingData) {
-          combined.set(chunk, offset);
-          offset += chunk.length;
-        }
-        pendingData = [];
-        frameRequested = false;
-        terminal.write(decoder.decode(combined, { stream: true }));
-      };
 
       listen<string>(`pty-output-${id}`, (event) => {
         const rawData = base64ToUint8Array(event.payload);
-        pendingData.push(rawData);
-        if (!frameRequested) {
-          frameRequested = true;
-          requestAnimationFrame(flushPendingData);
-        }
+        // Write directly to terminal without RAF batching for lower latency
+        terminal.write(decoder.decode(rawData, { stream: true }));
 
         // Debounce + idle detection for initial prompt injection
         if (initialInput && !initialPromptSent) {
