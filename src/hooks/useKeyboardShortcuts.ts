@@ -10,6 +10,7 @@ interface UseKeyboardShortcutsProps {
   onAddEditorPane?: () => void;
   onAddGitPane?: () => void;
   onOpenFileSearch?: () => void;
+  onOpenNewTerminalModal?: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -21,6 +22,7 @@ export function useKeyboardShortcuts({
   onAddEditorPane,
   onAddGitPane,
   onOpenFileSearch,
+  onOpenNewTerminalModal,
 }: UseKeyboardShortcutsProps) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -65,9 +67,16 @@ export function useKeyboardShortcuts({
           onOpenFileSearch();
         }
       }
+      // Cmd+N: Open new terminal modal
+      if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === "n") {
+        if (onOpenNewTerminalModal) {
+          e.preventDefault();
+          onOpenNewTerminalModal();
+        }
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [projects, selectedProject, onSelectProject, onToggleSidebar, onOpenScratchNotes, onAddEditorPane, onAddGitPane, onOpenFileSearch]);
+  }, [projects, selectedProject, onSelectProject, onToggleSidebar, onOpenScratchNotes, onAddEditorPane, onAddGitPane, onOpenFileSearch, onOpenNewTerminalModal]);
 }

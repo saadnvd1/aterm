@@ -3,9 +3,10 @@ import Fuse from "fuse.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Settings, Plus, GitBranch, X, Zap, StickyNote, FileCode } from "lucide-react";
+import { Settings, Plus, GitBranch, X, Zap, StickyNote, FileCode, Terminal } from "lucide-react";
 import { SimpleTooltip } from "@/components/ui/simple-tooltip";
 import type { ProjectConfig, AppConfig } from "../lib/config";
+import type { TransientTerminal } from "../lib/transient";
 import { PROVIDERS } from "../lib/providers";
 import { AddProjectModal } from "./AddProjectModal";
 import { SettingsModal } from "./SettingsModal";
@@ -47,6 +48,10 @@ interface Props {
   onDetachProject?: (project: ProjectConfig) => void;
   showNotesModal?: boolean;
   onShowNotesModalChange?: (show: boolean) => void;
+  transientTerminals?: TransientTerminal[];
+  selectedTerminalId?: string | null;
+  onSelectTerminal?: (id: string) => void;
+  onCloseTerminal?: (id: string) => void;
 }
 
 export function ProjectSidebar({
@@ -65,6 +70,10 @@ export function ProjectSidebar({
   onDetachProject,
   showNotesModal = false,
   onShowNotesModalChange,
+  transientTerminals = [],
+  selectedTerminalId,
+  onSelectTerminal,
+  onCloseTerminal,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -199,13 +208,19 @@ export function ProjectSidebar({
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 py-1">
-          {filtered.length === 0 ? (
+          {/* Projects Section */}
+          {(filtered.length > 0 || transientTerminals.length > 0) && (
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5 mb-1">
+              Projects
+            </div>
+          )}
+          {filtered.length === 0 && transientTerminals.length === 0 ? (
             <div className="py-5 px-3 text-muted-foreground text-xs text-center">
               {config.projects.length === 0
                 ? "No projects yet"
                 : "No matches"}
             </div>
-          ) : (
+          ) : filtered.length === 0 ? null : (
             filtered.map((project) => {
               const layout = config.layouts.find((l) => l.id === project.layoutId);
               const isSelected = selectedProject?.id === project.id;
@@ -289,6 +304,45 @@ export function ProjectSidebar({
                 </div>
               );
             })
+          )}
+
+          {/* Terminals Section */}
+          {transientTerminals.length > 0 && (
+            <>
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5 mt-3 mb-1">
+                Terminals
+              </div>
+              {transientTerminals.map((terminal) => {
+                const isSelected = selectedTerminalId === terminal.id;
+                return (
+                  <div
+                    key={terminal.id}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors group cursor-pointer",
+                      isSelected
+                        ? "bg-accent text-foreground"
+                        : "text-foreground hover:bg-accent/50"
+                    )}
+                    onClick={() => onSelectTerminal?.(terminal.id)}
+                  >
+                    <Terminal className="h-4 w-4 opacity-70" />
+                    <span className="flex-1 truncate">{terminal.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-5 w-5 opacity-0 group-hover:opacity-100"
+                      title="Close terminal"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseTerminal?.(terminal.id);
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </>
           )}
         </div>
       </div>

@@ -468,6 +468,17 @@ export function TerminalPane({
     if (savedFontSize === undefined) setFontSize(defaultFontSize);
   }, [defaultFontSize, savedFontSize]);
 
+  // Auto-focus terminal when it becomes active
+  useEffect(() => {
+    if (isFocused && isProjectActive && terminalRef.current) {
+      // Small delay to ensure DOM is ready after transitions
+      const timeout = setTimeout(() => {
+        terminalRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [isFocused, isProjectActive]);
+
   // File drag and drop
   useEffect(() => {
     if (!isFocused || !isProjectActive) return;

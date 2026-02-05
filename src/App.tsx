@@ -9,8 +9,10 @@ import { StatusBar } from "./components/StatusBar";
 import { CreateTaskModal } from "./components/CreateTaskModal";
 import { TaskView } from "./components/TaskView";
 import { FileSearchModal } from "./components/editor/FileSearchModal";
-import { useConfig, useTasks, useLayouts, useKeyboardShortcuts } from "./hooks";
+import { useConfig, useTasks, useLayouts, useKeyboardShortcuts, useTransientTerminals } from "./hooks";
 import { useDetachedWindows } from "./hooks/useDetachedWindows";
+import { NewTerminalModal } from "./components/NewTerminalModal";
+import { TransientTerminalView } from "./components/TransientTerminalView";
 import type { ProjectConfig } from "./lib/config";
 import appIcon from "./assets/icon.png";
 
@@ -63,18 +65,37 @@ export default function App() {
 
   const { detachPane, detachProject } = useDetachedWindows();
 
+  const {
+    terminals: transientTerminals,
+    selectedTerminalId,
+    createTerminal,
+    selectTerminal,
+    closeTerminal,
+    deselectTerminal,
+  } = useTransientTerminals();
+
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [activePtyCount, setActivePtyCount] = useState(0);
   const [createTaskProject, setCreateTaskProject] = useState<ProjectConfig | null>(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showFileSearch, setShowFileSearch] = useState(false);
   const [pendingFileToOpen, setPendingFileToOpen] = useState<string | null>(null);
+  const [showNewTerminalModal, setShowNewTerminalModal] = useState(false);
+  const [homeDir, setHomeDir] = useState<string>("");
 
-  // Wrap handleSelectProject to also clear selectedTask
+  // Wrap handleSelectProject to also clear selectedTask and deselect terminal
   const handleSelectProject = useCallback((project: ProjectConfig | null) => {
     baseHandleSelectProject(project);
     setSelectedTask(null);
-  }, [baseHandleSelectProject, setSelectedTask]);
+    deselectTerminal();
+  }, [baseHandleSelectProject, setSelectedTask, deselectTerminal]);
+
+  // Wrap selectTerminal to also clear project/task selection
+  const handleSelectTerminal = useCallback((id: string) => {
+    selectTerminal(id);
+    setSelectedProject(null);
+    setSelectedTask(null);
+  }, [selectTerminal, setSelectedProject, setSelectedTask]);
 
   useKeyboardShortcuts({
     projects: config.projects,
@@ -85,6 +106,7 @@ export default function App() {
     onAddEditorPane: handleAddEditorPane,
     onAddGitPane: handleAddGitPane,
     onOpenFileSearch: () => setShowFileSearch(true),
+    onOpenNewTerminalModal: () => setShowNewTerminalModal(true),
   });
 
   // Handler for detaching panes to separate windows
@@ -126,6 +148,11 @@ export default function App() {
     }
   }, []);
 
+  // Get home directory for new terminal modal
+  useEffect(() => {
+    invoke<string>("get_home_dir").then(setHomeDir).catch(console.error);
+  }, []);
+
   // Listen for exit request
   useEffect(() => {
     const unlisten = listen("exit-requested", async () => {
@@ -135,6 +162,16 @@ export default function App() {
     });
     return () => { unlisten.then((fn) => fn()); };
   }, []);
+
+  // Listen for close-pane event (Cmd+W) to close selected transient terminal
+  useEffect(() => {
+    if (!selectedTerminalId) return;
+
+    const unlisten = listen("close-pane", () => {
+      closeTerminal(selectedTerminalId);
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [selectedTerminalId, closeTerminal]);
 
   async function handleExitConfirm() {
     await invoke("force_exit");
@@ -216,10 +253,29 @@ export default function App() {
             onDetachProject={handleDetachProject}
             showNotesModal={showNotesModal}
             onShowNotesModalChange={setShowNotesModal}
+            transientTerminals={transientTerminals}
+            selectedTerminalId={selectedTerminalId}
+            onSelectTerminal={handleSelectTerminal}
+            onCloseTerminal={closeTerminal}
           />
         )}
         <div style={styles.main}>
-          {selectedTask && selectedProject ? (
+          {/* Transient terminal view */}
+          {selectedTerminalId && (() => {
+            const terminal = transientTerminals.find((t) => t.id === selectedTerminalId);
+            if (!terminal) return null;
+            return (
+              <TransientTerminalView
+                terminal={terminal}
+                defaultFontSize={config.defaultFontSize ?? 13}
+                defaultScrollback={config.defaultScrollback ?? 10000}
+                onClose={() => closeTerminal(terminal.id)}
+              />
+            );
+          })()}
+
+          {/* Task view */}
+          {!selectedTerminalId && selectedTask && selectedProject && (
             <TaskViewContainer
               selectedProject={selectedProject}
               selectedTask={selectedTask}
@@ -231,36 +287,40 @@ export default function App() {
               handleTaskLayoutChange={handleTaskLayoutChange}
               handleTaskPromptInjected={handleTaskPromptInjected}
             />
-          ) : openedProjectsList.length > 0 ? (
-            openedProjectsList.map((project) => {
-              const savedLayout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
-              const layout = runtimeLayouts[project.id] || savedLayout;
-              const isActive = selectedProject?.id === project.id;
+          )}
 
-              return (
-                <div
-                  key={project.id}
-                  style={{ ...styles.terminalContainer, display: isActive ? "flex" : "none" }}
-                >
-                  <TerminalLayout
-                    project={project}
-                    layout={layout}
-                    profiles={config.profiles}
-                    defaultFontSize={config.defaultFontSize ?? 13}
-                    defaultScrollback={config.defaultScrollback ?? 10000}
-                    paneFontSizes={config.paneFontSizes || {}}
-                    onPaneFontSizeChange={handlePaneFontSizeChange}
-                    onLayoutChange={(newLayout) => handleRuntimeLayoutChange(project.id, newLayout)}
-                    onPersistentLayoutChange={(newLayout) => handlePersistentLayoutChange(project.id, newLayout)}
-                    onDetachPane={(paneId) => handleDetachPane(project, paneId, layout)}
-                    isProjectActive={isActive}
-                    pendingFileToOpen={isActive ? pendingFileToOpen : null}
-                    onPendingFileOpened={() => setPendingFileToOpen(null)}
-                  />
-                </div>
-              );
-            })
-          ) : (
+          {/* Project terminals - always render opened ones, hide inactive */}
+          {!selectedTerminalId && openedProjectsList.map((project) => {
+            const savedLayout = config.layouts.find((l) => l.id === project.layoutId) || config.layouts[0];
+            const layout = runtimeLayouts[project.id] || savedLayout;
+            const isActive = selectedProject?.id === project.id && !selectedTask;
+
+            return (
+              <div
+                key={project.id}
+                style={{ ...styles.terminalContainer, display: isActive ? "flex" : "none" }}
+              >
+                <TerminalLayout
+                  project={project}
+                  layout={layout}
+                  profiles={config.profiles}
+                  defaultFontSize={config.defaultFontSize ?? 13}
+                  defaultScrollback={config.defaultScrollback ?? 10000}
+                  paneFontSizes={config.paneFontSizes || {}}
+                  onPaneFontSizeChange={handlePaneFontSizeChange}
+                  onLayoutChange={(newLayout) => handleRuntimeLayoutChange(project.id, newLayout)}
+                  onPersistentLayoutChange={(newLayout) => handlePersistentLayoutChange(project.id, newLayout)}
+                  onDetachPane={(paneId) => handleDetachPane(project, paneId, layout)}
+                  isProjectActive={isActive}
+                  pendingFileToOpen={isActive ? pendingFileToOpen : null}
+                  onPendingFileOpened={() => setPendingFileToOpen(null)}
+                />
+              </div>
+            );
+          })}
+
+          {/* Empty state - show when no terminal, no task, and no active project */}
+          {!selectedTerminalId && !selectedTask && openedProjectsList.length === 0 && (
             <div style={styles.empty}>
               <div style={styles.emptyContent}>
                 <img src={appIcon} alt="aTerm" style={styles.emptyIcon} />
@@ -295,6 +355,17 @@ export default function App() {
           }}
         />
       )}
+      {/* New terminal modal */}
+      <NewTerminalModal
+        isOpen={showNewTerminalModal}
+        onClose={() => setShowNewTerminalModal(false)}
+        onSelect={(cwd) => {
+          createTerminal(cwd);
+          setShowNewTerminalModal(false);
+        }}
+        currentProjectPath={selectedProject?.path || null}
+        homeDir={homeDir}
+      />
     </div>
   );
 }
