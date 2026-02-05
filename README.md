@@ -28,6 +28,7 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 - **Split Panes** - Right-click to split with any profile, drag borders to resize
 - **Pane Renaming** - Double-click or right-click to rename panes
 - **Scratch Notes** - Per-project markdown scratchpad for quick notes (Shift+Cmd+N)
+- **Transient Terminals** - Quick standalone terminals with Cmd+N, not tied to any project
 - **Maximize Mode** - Shift+Cmd+Enter to focus on a single pane
 - **Per-Pane Font Size** - Cmd+Plus/Minus to adjust individual pane fonts
 - **Themes** - Midnight, Dracula, Nord, Tokyo Night, Gruvbox
@@ -38,6 +39,7 @@ aTerm gives you predefined layouts optimized for these workflows, with instant p
 |----------|--------|
 | Cmd+1-9 | Switch to project 1-9 |
 | Cmd+B | Toggle sidebar |
+| Cmd+N | New transient terminal |
 | Cmd+P | File search |
 | Shift+Cmd+G | Toggle git panel |
 | Shift+Cmd+E | Toggle editor pane |
