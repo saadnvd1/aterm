@@ -238,8 +238,12 @@ export function TerminalPane({
           return false;
         }
 
+        // Shift+Enter: Insert newline for multiline input in Claude Code
+        // Send Escape + Enter sequence which Claude Code interprets as "insert newline"
         if (e.shiftKey && !e.metaKey && !e.ctrlKey && e.key === "Enter") {
-          invoke("write_pty", { id, data: "\n" }).catch(console.error);
+          e.preventDefault();
+          e.stopPropagation();
+          invoke("write_pty", { id, data: "\x1b\r" }).catch(console.error);
           return false;
         }
 
