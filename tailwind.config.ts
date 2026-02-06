@@ -45,14 +45,19 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      // Semantic z-index scale for layered UI components
+      // Each layer is spaced by 100 to allow sub-layers if needed
+      // Usage: z-sticky, z-dropdown, z-popover, z-modal, z-tooltip, etc.
       zIndex: {
-        dropdown: "200",
-        popover: "300",
+        sticky: "100",           // Sticky headers, fixed sidebars
+        dropdown: "200",         // Dropdown menus, maximized panes
+        popover: "300",          // Popovers, context menus, floating panels
         "popover-nested": "400", // Nested popovers (selects inside popovers)
-        modal: "500",
-        "modal-nested": "600", // Nested modals, selects inside modals
-        toast: "700",
-        tooltip: "800",
+        modal: "500",            // Modal dialogs, overlays
+        "modal-nested": "600",   // Nested modals, selects inside modals
+        toast: "700",            // Toast notifications
+        tooltip: "800",          // Tooltips (highest regular layer)
+        max: "9999",             // Escape hatch for edge cases
       },
       fontFamily: {
         sans: [

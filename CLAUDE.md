@@ -118,10 +118,26 @@ Themes are defined in `globals.css` with CSS variables:
 Set `data-theme` attribute on `<html>`:
 - `midnight` (default), `dracula`, `nord`, `tokyoNight`, `gruvbox`, `oneDark`, `catppuccin`, `monokai`, `solarized`, `rosePine`
 
+### Z-Index Scale
+Semantic z-index layers defined in `tailwind.config.ts`. **Never use raw z-index values (z-10, z-50, etc.) — always use semantic names.**
+
+| Class              | Value | Usage                                    |
+|--------------------|-------|------------------------------------------|
+| `z-sticky`         | 100   | Sticky headers, fixed sidebars           |
+| `z-dropdown`       | 200   | Dropdown menus, maximized panes          |
+| `z-popover`        | 300   | Popovers, context menus, floating panels |
+| `z-popover-nested` | 400   | Selects inside popovers                  |
+| `z-modal`          | 500   | Modal dialogs, overlays                  |
+| `z-modal-nested`   | 600   | Selects/dropdowns inside modals          |
+| `z-toast`          | 700   | Toast notifications                      |
+| `z-tooltip`        | 800   | Tooltips (highest regular layer)         |
+| `z-max`            | 9999  | Escape hatch for edge cases              |
+
 ### Conventions (from LumifyHub)
 - Use `cn()` for conditional classes: `cn("base", condition && "active")`
 - Prefer shadcn components over custom implementations
 - Use semantic color names (`bg-primary` not `bg-purple-500`)
+- Use semantic z-index names (`z-modal` not `z-50`)
 
 ## File Size Rules
 
